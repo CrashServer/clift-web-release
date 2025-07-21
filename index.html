@@ -1,0 +1,2534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLIFT Web - Complete ASCII VJ Software</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            user-select: none;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        
+        .control-panel {
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 6px;
+            border: 1px solid #0f0;
+            font-size: 11px;
+            z-index: 10;
+            width: 200px;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+        
+        .control-group {
+            margin: 3px 0;
+            padding: 3px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        button {
+            background: #222;
+            color: #0f0;
+            border: 1px solid #0f0;
+            border-radius: 0px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-family: monospace;
+            margin: 1px;
+            transition: all 0.15s ease;
+            font-weight: 500;
+            font-size: 11px;
+        }
+        
+        button:hover {
+            background: #333;
+            border-color: #4f4;
+            color: #4f4;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0,255,0,0.2);
+        }
+        
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0,255,0,0.2);
+        }
+        
+        button:disabled {
+            background: #111;
+            color: #666;
+            border-color: #444;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        
+        button.small {
+            padding: 2px 6px;
+            font-size: 10px;
+            margin: 1px;
+        }
+        
+        .scene-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            margin: 4px 0;
+        }
+        
+        .scene-btn {
+            padding: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border: 2px solid #333;
+            border-radius: 0px;
+            background: #111;
+            color: #888;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .scene-btn:hover {
+            background: #222;
+            color: #fff;
+            border-color: #555;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        
+        .scene-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .scene-btn.current {
+            background: linear-gradient(135deg, #0f0, #0a0);
+            color: #000;
+            border-color: #0f0;
+            box-shadow: 0 0 15px rgba(0,255,0,0.5), 0 4px 8px rgba(0,0,0,0.4);
+            animation: pulse-active 2s infinite;
+        }
+        
+        @keyframes pulse-active {
+            0%, 100% { box-shadow: 0 0 15px rgba(0,255,0,0.5), 0 4px 8px rgba(0,0,0,0.4); }
+            50% { box-shadow: 0 0 25px rgba(0,255,0,0.8), 0 4px 8px rgba(0,0,0,0.4); }
+        }
+        
+        /* Deck selector styles */
+        .deck-selector {
+            display: flex;
+            gap: 4px;
+            margin: 4px 0;
+            justify-content: center;
+        }
+        
+        .deck {
+            padding: 6px 12px;
+            background: #222;
+            border: 1px solid #0f0;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 0px;
+            transition: all 0.2s ease;
+            min-width: 40px;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .deck:hover {
+            background: #333;
+            border-color: #4f4;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,255,0,0.2);
+        }
+        
+        .deck.active {
+            background: linear-gradient(135deg, #0f0, #0a0);
+            color: #000;
+            border-color: #0f0;
+            box-shadow: 0 0 20px rgba(0,255,0,0.6), 0 4px 8px rgba(0,0,0,0.4);
+            animation: deck-pulse 2s infinite;
+        }
+        
+        @keyframes deck-pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(0,255,0,0.6), 0 4px 8px rgba(0,0,0,0.4); }
+            50% { box-shadow: 0 0 30px rgba(0,255,0,0.9), 0 4px 8px rgba(0,0,0,0.4); }
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        .beat-indicator {
+            color: #f00;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .beat-indicator.beat {
+            animation: beatPulse 0.1s;
+        }
+        
+        @keyframes beatPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .standalone-crossfader {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid #0f0;
+            padding: 12px 18px;
+        }
+        
+        .crossfader-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .crossfader-label {
+            color: #0f0;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 0 0 4px #0f0;
+        }
+        
+        .crossfader-slider {
+            width: 240px;
+            height: 6px;
+            appearance: none;
+            background: #333;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        .crossfader-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #0f0;
+            cursor: pointer;
+            border: 2px solid #000;
+            border-radius: 0px; /* No rounded borders */
+            box-shadow: 0 0 8px #0f0;
+        }
+        
+        .crossfader-slider::-webkit-slider-thumb:hover {
+            background: #44ff44;
+            box-shadow: 0 0 16px #0f0;
+        }
+        
+        .crossfader-value {
+            text-align: center;
+            margin-top: 6px;
+            font-size: 11px;
+            color: #0f0;
+        }
+        
+        /* Loading Screen Styles */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .loading-logo {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #0f0;
+            animation: glow-pulse 2s ease-in-out infinite;
+        }
+        
+        .loading-bar-container {
+            width: 300px;
+            height: 20px;
+            border: 1px solid #0f0;
+            background: #000;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loading-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #000, #0f0, #000);
+            background-size: 50px 100%;
+            width: 0%;
+            animation: loading-progress 3s ease-out forwards, loading-shimmer 1s linear infinite;
+        }
+        
+        .loading-text {
+            font-size: 12px;
+            margin-top: 10px;
+            opacity: 0.8;
+            animation: text-flicker 0.8s linear infinite;
+        }
+        
+        .loading-version {
+            position: absolute;
+            bottom: 20px;
+            font-size: 10px;
+            opacity: 0.6;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes glow-pulse {
+            0%, 100% { text-shadow: 0 0 10px #0f0; }
+            50% { text-shadow: 0 0 20px #0f0, 0 0 30px #0f0; }
+        }
+        
+        @keyframes loading-progress {
+            0% { width: 0%; }
+            20% { width: 15%; }
+            40% { width: 35%; }
+            60% { width: 55%; }
+            80% { width: 85%; }
+            100% { width: 100%; }
+        }
+        
+        @keyframes loading-shimmer {
+            0% { background-position: -50px 0; }
+            100% { background-position: 350px 0; }
+        }
+        
+        @keyframes text-flicker {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 0.4; }
+        }
+        
+        .loading-screen.fade-out {
+            animation: fadeOut 0.8s ease-out forwards;
+        }
+        
+        @keyframes fadeOut {
+            to { opacity: 0; visibility: hidden; }
+        }
+        
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            z-index: 20000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            background: #000;
+            border: 2px solid #0f0;
+            margin: 5% auto;
+            padding: 0;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80%;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            color: #0f0;
+        }
+        
+        .modal-header {
+            background: rgba(0, 255, 0, 0.1);
+            padding: 12px 16px;
+            border-bottom: 1px solid #0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 16px;
+            color: #0f0;
+        }
+        
+        .close {
+            color: #0f0;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        .close:hover {
+            color: #ff0;
+            text-shadow: 0 0 5px #ff0;
+        }
+        
+        .modal-body {
+            padding: 16px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .about-logo {
+            text-align: center;
+            font-size: 10px;
+            margin-bottom: 16px;
+            color: #0f0;
+            text-shadow: 0 0 5px #0f0;
+        }
+        
+        .about-description {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .about-description p {
+            margin: 4px 0;
+        }
+        
+        .about-links, .about-features {
+            margin-bottom: 20px;
+        }
+        
+        .about-links h3, .about-features h3 {
+            color: #0f0;
+            font-size: 14px;
+            margin: 0 0 8px 0;
+            border-bottom: 1px solid #333;
+            padding-bottom: 4px;
+        }
+        
+        .about-links ul, .about-features ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .about-links li, .about-features li {
+            margin: 4px 0;
+            padding: 2px 0;
+        }
+        
+        .about-links a {
+            color: #4f4;
+            text-decoration: none;
+            border-bottom: 1px dotted #4f4;
+        }
+        
+        .about-links a:hover {
+            color: #ff0;
+            border-bottom-color: #ff0;
+            text-shadow: 0 0 3px #ff0;
+        }
+        
+        .about-footer {
+            text-align: center;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #333;
+            opacity: 0.7;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-logo">
+░█████╗░██╗░░░░░██╗███████╗████████╗<br>
+██╔══██╗██║░░░░░██║██╔════╝╚══██╔══╝<br>
+██║░░╚═╝██║░░░░░██║█████╗░░░░░██║░░░<br>
+██║░░██╗██║░░░░░██║██╔══╝░░░░░██║░░░<br>
+╚█████╔╝███████╗██║██║░░░░░░░░██║░░░<br>
+░╚════╝░╚══════╝╚═╝╚═╝░░░░░░░░╚═╝░░░<br>
+        </div>
+        <div class="loading-bar-container">
+            <div class="loading-bar"></div>
+        </div>
+        <div class="loading-text" id="loading-text">INITIALIZING SYSTEMS...</div>
+        <div class="loading-version">CLIFT Web v2.0 - ASCII VJ Software</div>
+    </div>
+
+    <div id="ascii-canvas"></div>
+    
+    <div class="control-panel" id="controls">
+        <!-- DECK SELECTOR AT TOP -->
+        <div class="control-group">
+            <strong>DECK SELECT</strong><br>
+            <div class="deck-selector">
+                <div class="deck active" id="deckA">A</div>
+                <div class="deck" id="deckB">B</div>
+            </div>
+            <span id="active-deck-indicator">A</span><br>
+            <div id="category" style="font-size: 10px; margin: 2px 0; line-height: 1.2;">0: Audio Reactive</div>
+            Scene: <span id="scene">0</span><br>
+            <button class="small" id="cat-prev">◄</button>
+            <button class="small" id="cat-next">►</button>
+            <button class="small" id="scene-prev">←</button>
+            <button class="small" id="scene-next">→</button>
+        </div>
+        
+        <div class="control-group">
+            <strong>SCENES</strong>
+            <div class="scene-grid">
+                <button class="scene-btn" data-scene="0">0</button>
+                <button class="scene-btn" data-scene="1">1</button>
+                <button class="scene-btn" data-scene="2">2</button>
+                <button class="scene-btn" data-scene="3">3</button>
+                <button class="scene-btn" data-scene="4">4</button>
+                <button class="scene-btn" data-scene="5">5</button>
+                <button class="scene-btn" data-scene="6">6</button>
+                <button class="scene-btn" data-scene="7">7</button>
+                <button class="scene-btn" data-scene="8">8</button>
+                <button class="scene-btn" data-scene="9">9</button>
+                <button class="scene-btn" data-scene="10">10</button>
+                <button class="scene-btn" data-scene="11">11</button>
+                <button class="scene-btn" data-scene="12">12</button>
+                <button class="scene-btn" data-scene="13">13</button>
+                <button class="scene-btn" data-scene="14">14</button>
+                <button class="scene-btn" data-scene="15">15</button>
+            </div>
+        </div>
+        
+        <!-- CROSSFADER REMOVED FROM CONTROL PANEL -->
+        
+        <div class="control-group">
+            <strong>EFFECTS</strong><br>
+            <button class="small" id="effect-prev">◄</button>
+            <span id="effect-name">None</span>
+            <button class="small" id="effect-next">►</button>
+        </div>
+        
+        <div class="control-group">
+            <strong>TRANSITIONS</strong><br>
+            <button id="transition-trigger" style="width: 100%; margin-bottom: 3px; background: #444; border-color: #f80;">TRIGGER</button>
+            <div style="font-size: 10px;">
+                <label style="color: #888;">
+                    <input type="checkbox" id="auto-transition" style="margin-right: 3px;">Auto Beat
+                </label>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <strong>COLOR</strong><br>
+            <button id="color-toggle">Toggle</button>
+            <button id="color-mode">Mode</button>
+            <button id="color-invert">FG/BG</button><br>
+            <div style="font-size: 10px; margin-top: 3px;">
+                Pri: <span id="primary-color">Grn</span> | Sec: <span id="secondary-color">Cyn</span><br>
+                <button class="small" id="primary-prev">◄</button>
+                <button class="small" id="primary-next">►</button>
+                <button class="small" id="secondary-prev">◄</button>
+                <button class="small" id="secondary-next">►</button><br>
+                Grad: <span id="gradient-type">Lin-H</span>
+                <button class="small" id="gradient-next">►</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <strong>POST-FX</strong><br>
+            <button id="postfx-toggle">Toggle</button>
+            <button id="postfx-style">Style</button>
+            <button id="postfx-preset">Preset</button><br>
+            <div style="font-size: 10px; margin-top: 3px;">
+                Glow: <span id="glow-level">5</span><br>
+                <button class="small" id="glow-down">-</button>
+                <button class="small" id="glow-up">+</button>
+                <button class="small" id="glow-toggle">On/Off</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <strong>AUDIO</strong><br>
+            <button id="audio-toggle">Enable</button>
+            <span class="beat-indicator" id="beat"></span><br>
+            <div id="audio-status" style="font-size: 10px; color: #888; margin-top: 2px;">Ready</div>
+            <div id="audio-visualizer" style="margin-top: 5px; display: block;">
+                <div style="font-size: 10px; margin-bottom: 2px;">FFT</div>
+                <div style="display: flex; align-items: end; height: 24px; gap: 2px; justify-content: space-between; width: 100%; max-width: 80px;">
+                    <div class="fft-bar" id="fft-bass" style="width: 12px; background: #0f0; height: 3px; min-height: 3px;"></div>
+                    <div class="fft-bar" id="fft-low" style="width: 12px; background: #ff0; height: 3px; min-height: 3px;"></div>
+                    <div class="fft-bar" id="fft-mid" style="width: 12px; background: #f80; height: 3px; min-height: 3px;"></div>
+                    <div class="fft-bar" id="fft-high" style="width: 12px; background: #f00; height: 3px; min-height: 3px;"></div>
+                </div>
+                <div style="font-size: 8px; margin-top: 2px; display: flex; justify-content: space-between; width: 100%; max-width: 80px;">
+                    <span>BAS</span><span>LOW</span><span>MID</span><span>HI</span>
+                </div>
+                <div style="margin-top: 5px;">
+                    <label style="font-size: 10px;">Gain: <span id="gain-value">1.0</span></label>
+                    <input type="range" id="audio-gain" min="0.1" max="5.0" step="0.1" value="1.0" style="width: 100%; margin-top: 2px;">
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <strong>AUTO MODE</strong><br>
+            <button id="full-auto">Full Auto</button>
+            <span id="auto-indicator" style="display: none; color: #f80;">AUTO</span>
+            <button class="small" id="auto-options-toggle" style="margin-left: 5px;">Options</button>
+        </div>
+        
+        <div class="control-group" id="auto-options-panel" style="display: none; border: 1px solid #0f0; padding: 5px; margin-top: 5px;">
+            <strong style="font-size: 10px;">AUTO OPTIONS</strong><br>
+            <div style="font-size: 9px; margin: 2px 0;">
+                <label><input type="checkbox" id="auto-scenes" checked> Scenes</label><br>
+                <label><input type="checkbox" id="auto-effects" checked> Effects</label><br>
+                <label><input type="checkbox" id="auto-crossfade" checked> Crossfade</label><br>
+                <label><input type="checkbox" id="auto-postfx" checked> PostFX</label><br>
+                <label><input type="checkbox" id="auto-experimental" checked> Experimental</label><br>
+                <label><input type="checkbox" id="auto-colors" checked> Colors</label>
+            </div>
+            <div style="font-size: 9px; margin: 2px 0;">
+                <label>Subdivision: 
+                    <select id="auto-subdivision" style="font-size: 9px; width: 40px;">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="4" selected>4</option>
+                        <option value="8">8</option>
+                        <option value="16">16</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <strong>EXPERIMENTAL</strong><br>
+            <button id="surface-toggle">Experimental</button>
+            <div id="surface-status" style="font-size: 10px; color: #888; margin-top: 2px;">ASCII Rendering</div>
+            <div style="font-size: 9px; color: #666; margin-top: 2px;">9 render modes available</div>
+        </div>
+        
+        <div class="control-group">
+            <strong>RESOLUTION</strong><br>
+            <button class="small" id="res-down">-</button>
+            <span id="res-display">80x24</span>
+            <button class="small" id="res-up">+</button>
+            <button class="small" id="res-preset">Preset</button>
+        </div>
+        
+        <!-- BPM AND FPS REMOVED -->
+        
+        <div class="control-group">
+            <strong>MODES</strong><br>
+            <button id="pause-toggle">PAUSE</button>
+            <button id="fullscreen-toggle">Fullscreen</button>
+        </div>
+        
+        <div class="control-group">
+            <strong>RECORD</strong><br>
+            <button id="record-toggle">Start</button>
+        </div>
+        
+        <div class="control-group">
+            <strong>SESSION</strong><br>
+            <button id="save-session-btn" style="width: 100%; margin-bottom: 2px;">Save</button>
+            <button id="load-session-btn" style="width: 100%;">Load</button>
+            <input type="file" id="load-file-input" accept=".json" style="display: none;">
+        </div>
+        
+        <div class="control-group">
+            <strong>TOOLS</strong><br>
+            <button id="help-btn" style="width: 100%;">Help (H)</button>
+            <button id="unified-editor-btn" style="width: 100%;">Scene Editor (E)</button>
+            <button id="shortcuts-btn" style="width: 100%;">Shortcuts</button>
+            <button id="about-btn" style="width: 100%;">About</button>
+        </div>
+    </div>
+    
+    <!-- THE STANDALONE CROSSFADER - DETACHED FROM UI -->
+    <div class="standalone-crossfader">
+        <div class="crossfader-container">
+            <div class="crossfader-label">A</div>
+            <input type="range" class="crossfader-slider" id="crossfader" min="0" max="100" value="50">
+            <div class="crossfader-label">B</div>
+        </div>
+        <div class="crossfader-value">
+            <span id="fade-value">50%</span>
+        </div>
+    </div>
+    
+    <!-- About Modal -->
+    <div id="about-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" id="about-close">&times;</span>
+                <h2>CLIFT Web - About</h2>
+            </div>
+            <div class="modal-body">
+                <div class="about-logo">
+                    ░█████╗░██╗░░░░░██╗███████╗████████╗<br>
+                    ██╔══██╗██║░░░░░██║██╔════╝╚══██╔══╝<br>
+                    ██║░░╚═╝██║░░░░░██║█████╗░░░░░██║░░░<br>
+                    ██║░░██╗██║░░░░░██║██╔══╝░░░░░██║░░░<br>
+                    ╚█████╔╝███████╗██║██║░░░░░░░░██║░░░<br>
+                    ░╚════╝░╚══════╝╚═╝╚═╝░░░░░░░░╚═╝░░░
+                </div>
+                <div class="about-description">
+                    <p><strong>CLIFT Web v2.0</strong></p>
+                    <p>Browser-based ASCII VJ Software</p>
+                    <p>Real-time audio-reactive visual performance tool with 150+ scenes</p>
+                </div>
+                <div class="about-links">
+                    <h3>Links & Resources</h3>
+                    <ul>
+                        <li><a href="#" target="_blank" id="link-github">GitHub Repository</a></li>
+                        <li><a href="#" target="_blank" id="link-docs">Documentation</a></li>
+                        <li><a href="#" target="_blank" id="link-terminal">CLIFT Terminal Version</a></li>
+                        <li><a href="#" target="_blank" id="link-community">Community</a></li>
+                        <li><a href="#" target="_blank" id="link-support">Support</a></li>
+                    </ul>
+                </div>
+                <div class="about-features">
+                    <h3>Features</h3>
+                    <ul>
+                        <li>🎵 Real-time audio analysis & beat detection</li>
+                        <li>🎨 150+ audio-reactive ASCII art scenes</li>
+                        <li>🎛️ Dual-deck mixing system with crossfader</li>
+                        <li>🌈 Advanced color system (10 pairs + gradients)</li>
+                        <li>⚡ 27 post-processing effects</li>
+                        <li>🎯 BPM synchronization & auto mode</li>
+                        <li>💾 Session save/load system</li>
+                        <li>📱 Mobile & desktop support</li>
+                    </ul>
+                </div>
+                <div class="about-footer">
+                    <p><em>Terminal visuals meet modern web technology</em></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Load all the CLIFT engine scripts -->
+    <script src="clift-engine.js"></script>
+    <script src="clift-scenes-final.js"></script>
+    <script src="human-animation-scenes.js"></script>
+    <script src="giger-cyberpunk-scenes.js"></script>
+    <script src="clift-effects.js"></script>
+    <script src="clift-3d-effects.js"></script>
+    <script src="clift-shader-effects.js"></script>
+    <script src="clift-3d-ascii-renderer.js"></script>
+    <script src="clift-scene-editor.js"></script>
+    <script src="clift-node-editor.js"></script>
+    <script src="clift-audio-enhanced.js"></script>
+    <script src="clift-postfx-clean.js"></script>
+    <script src="clift-websocket.js"></script>
+    <script src="clift-recorder.js"></script>
+    
+    <script>
+        // Initialize CLIFT Engine
+        const clift = new CLIFTEngine({
+            canvas: document.getElementById('ascii-canvas'),
+            width: 80,
+            height: 24,
+            fps: 30
+        });
+        
+        // Make clift globally accessible
+        window.clift = clift;
+        
+        // Debug Logger System
+        const DebugLogger = {
+            logs: [],
+            maxLogs: 1000,
+            
+            log(level, category, message, data = null) {
+                const timestamp = new Date().toISOString();
+                const logEntry = {
+                    timestamp,
+                    level,
+                    category,
+                    message,
+                    data: data ? JSON.parse(JSON.stringify(data)) : null
+                };
+                
+                this.logs.push(logEntry);
+                if (this.logs.length > this.maxLogs) {
+                    this.logs.shift();
+                }
+                
+                // Also log to console
+                const consoleMsg = `[${timestamp}] [${level}] [${category}] ${message}`;
+                if (level === 'ERROR') {
+                    console.error(consoleMsg, data);
+                } else if (level === 'WARN') {
+                    console.warn(consoleMsg, data);
+                } else {
+                    console.log(consoleMsg, data);
+                }
+            },
+            
+            error(category, message, data) {
+                this.log('ERROR', category, message, data);
+            },
+            
+            warn(category, message, data) {
+                this.log('WARN', category, message, data);
+            },
+            
+            info(category, message, data) {
+                this.log('INFO', category, message, data);
+            },
+            
+            downloadLogs() {
+                const logData = {
+                    generatedAt: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    url: window.location.href,
+                    logs: this.logs
+                };
+                
+                const blob = new Blob([JSON.stringify(logData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `clift-debug-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            },
+            
+            clear() {
+                this.logs = [];
+                console.clear();
+            }
+        };
+        
+        // Make logger available globally
+        window.DebugLogger = DebugLogger;
+        
+
+        // Enhanced UI Elements with all controls
+        const elements = {
+            canvas: document.getElementById('ascii-canvas'),
+            deckA: document.getElementById('deckA'),
+            deckB: document.getElementById('deckB'),
+            crossfader: document.getElementById('crossfader'),
+            fadeValue: document.getElementById('fade-value'),
+            effect: document.getElementById('effect-name'),
+            category: document.getElementById('category'),
+            scene: document.getElementById('scene'),
+            audioToggle: document.getElementById('audio-toggle'),
+            fullAuto: document.getElementById('full-auto'),
+            autoIndicator: document.getElementById('auto-indicator'),
+            autoOptionsToggle: document.getElementById('auto-options-toggle'),
+            autoOptionsPanel: document.getElementById('auto-options-panel'),
+            autoScenes: document.getElementById('auto-scenes'),
+            autoEffects: document.getElementById('auto-effects'),
+            autoCrossfade: document.getElementById('auto-crossfade'),
+            autoPostfx: document.getElementById('auto-postfx'),
+            autoExperimental: document.getElementById('auto-experimental'),
+            autoColors: document.getElementById('auto-colors'),
+            autoSubdivision: document.getElementById('auto-subdivision'),
+            surfaceToggle: document.getElementById('surface-toggle'),
+            surfaceStatus: document.getElementById('surface-status'),
+            sceneButtons: document.querySelectorAll('.scene-btn'),
+            catPrev: document.getElementById('cat-prev'),
+            catNext: document.getElementById('cat-next'),
+            scenePrev: document.getElementById('scene-prev'),
+            sceneNext: document.getElementById('scene-next'),
+            effectPrev: document.getElementById('effect-prev'),
+            effectNext: document.getElementById('effect-next'),
+            colorToggle: document.getElementById('color-toggle'),
+            colorMode: document.getElementById('color-mode'),
+            colorInvert: document.getElementById('color-invert'),
+            postfxToggle: document.getElementById('postfx-toggle'),
+            postfxStyle: document.getElementById('postfx-style'),
+            postfxPreset: document.getElementById('postfx-preset'),
+            pauseToggle: document.getElementById('pause-toggle'),
+            fullscreenToggle: document.getElementById('fullscreen-toggle'),
+            recordToggle: document.getElementById('record-toggle'),
+            resDown: document.getElementById('res-down'),
+            resUp: document.getElementById('res-up'),
+            resDisplay: document.getElementById('res-display'),
+            resPreset: document.getElementById('res-preset'),
+            activeDeckIndicator: document.getElementById('active-deck-indicator'),
+            primaryColor: document.getElementById('primary-color'),
+            secondaryColor: document.getElementById('secondary-color'),
+            gradientType: document.getElementById('gradient-type'),
+            primaryPrev: document.getElementById('primary-prev'),
+            primaryNext: document.getElementById('primary-next'),
+            secondaryPrev: document.getElementById('secondary-prev'),
+            secondaryNext: document.getElementById('secondary-next'),
+            gradientNext: document.getElementById('gradient-next'),
+            glowLevel: document.getElementById('glow-level'),
+            glowDown: document.getElementById('glow-down'),
+            glowUp: document.getElementById('glow-up'),
+            glowToggle: document.getElementById('glow-toggle'),
+            saveSessionBtn: document.getElementById('save-session-btn'),
+            loadSessionBtn: document.getElementById('load-session-btn'),
+            loadFileInput: document.getElementById('load-file-input'),
+            audioVisualizer: document.getElementById('audio-visualizer'),
+            audioStatus: document.getElementById('audio-status'),
+            fftBass: document.getElementById('fft-bass'),
+            fftLow: document.getElementById('fft-low'),
+            fftMid: document.getElementById('fft-mid'),
+            fftHigh: document.getElementById('fft-high'),
+            beatIndicator: document.getElementById('beat'),
+            audioGain: document.getElementById('audio-gain'),
+            gainValue: document.getElementById('gain-value'),
+            transitionTrigger: document.getElementById('transition-trigger'),
+            autoTransition: document.getElementById('auto-transition'),
+            helpBtn: document.getElementById('help-btn'),
+            shortcutsBtn: document.getElementById('shortcuts-btn'),
+            unifiedEditorBtn: document.getElementById('unified-editor-btn'),
+            aboutBtn: document.getElementById('about-btn'),
+            aboutModal: document.getElementById('about-modal'),
+            aboutClose: document.getElementById('about-close')
+        };
+        
+        // Make elements globally accessible for auto options
+        window.elements = elements;
+        
+        // Deck selector functionality
+        elements.deckA.onclick = () => {
+            clift.activeDeck = 0;
+            elements.deckA.classList.add('active');
+            elements.deckB.classList.remove('active');
+            updateSceneButtons();
+        };
+        
+        elements.deckB.onclick = () => {
+            clift.activeDeck = 1;
+            elements.deckB.classList.add('active');
+            elements.deckA.classList.remove('active');
+            updateSceneButtons();
+        };
+        
+        // Crossfader functionality
+        elements.crossfader.oninput = (e) => {
+            const value = e.target.value;
+            clift.crossfader = value / 100;
+            elements.fadeValue.textContent = value + '%';
+        };
+        
+        // Navigation
+        elements.catPrev.onclick = () => {
+            try {
+                DebugLogger.info('UI', 'Category Previous clicked');
+                const deck = clift.decks[clift.activeDeck];
+                DebugLogger.info('UI', 'Current deck state', { category: deck.category, scene: deck.scene, activeDeck: clift.activeDeck });
+                deck.category = (deck.category - 1 + 25) % 25;
+                // Set starting scene based on category
+                deck.scene = (deck.category === 20 || deck.category === 21) ? 5 : 0;
+                DebugLogger.info('UI', 'New deck state', { category: deck.category, scene: deck.scene, sceneId: deck.category * 10 + deck.scene });
+                DebugLogger.info('UI', 'Calling updateSceneButtons');
+                updateSceneButtons();
+                DebugLogger.info('UI', 'Calling updateUI');
+                updateUI();
+                DebugLogger.info('UI', 'Category change completed');
+            } catch (error) {
+                DebugLogger.error('UI', 'Error in category previous', { error: error.message, stack: error.stack });
+            }
+        };
+        
+        elements.catNext.onclick = () => {
+            try {
+                DebugLogger.info('UI', 'Category Next clicked');
+                const deck = clift.decks[clift.activeDeck];
+                DebugLogger.info('UI', 'Current deck state', { category: deck.category, scene: deck.scene, activeDeck: clift.activeDeck });
+                deck.category = (deck.category + 1) % 25;
+                // Set starting scene based on category
+                deck.scene = (deck.category === 20 || deck.category === 21) ? 5 : 0;
+                DebugLogger.info('UI', 'New deck state', { category: deck.category, scene: deck.scene, sceneId: deck.category * 10 + deck.scene });
+                DebugLogger.info('UI', 'Calling updateSceneButtons');
+                updateSceneButtons();
+                DebugLogger.info('UI', 'Calling updateUI');
+                updateUI();
+                DebugLogger.info('UI', 'Category change completed');
+            } catch (error) {
+                DebugLogger.error('UI', 'Error in category next', { error: error.message, stack: error.stack });
+            }
+        };
+        
+        elements.scenePrev.onclick = () => {
+            const deck = clift.decks[clift.activeDeck];
+            // Get scene boundaries based on category
+            const minScene = (deck.category === 20 || deck.category === 21) ? 5 : 0;
+            deck.scene = Math.max(minScene, deck.scene - 1);
+            updateSceneButtons();
+            updateUI();
+        };
+        
+        elements.sceneNext.onclick = () => {
+            const deck = clift.decks[clift.activeDeck];
+            // Get scene boundaries based on category
+            const maxScene = (deck.category === 20 || deck.category === 21) ? 14 : 9;
+            deck.scene = Math.min(maxScene, deck.scene + 1);
+            updateSceneButtons();
+            updateUI();
+        };
+        
+        // Scene buttons
+        elements.sceneButtons.forEach(btn => {
+            btn.onclick = () => {
+                const sceneNum = parseInt(btn.getAttribute('data-scene'));
+                clift.decks[clift.activeDeck].scene = sceneNum;
+                updateSceneButtons();
+                updateUI();
+            };
+        });
+        
+        // Effects
+        if (elements.effectPrev) {
+            elements.effectPrev.onclick = () => {
+                clift.prevEffect();
+                updateUI();
+            };
+        }
+        
+        if (elements.effectNext) {
+            elements.effectNext.onclick = () => {
+                clift.nextEffect();
+                updateUI();
+            };
+        }
+        
+        // Color controls
+        if (elements.colorToggle) {
+            elements.colorToggle.onclick = () => {
+                const colorState = clift.toggleColorEnabled();
+                elements.colorToggle.textContent = colorState ? 'ON' : 'OFF';
+                elements.colorToggle.style.background = colorState ? '#0f0' : '#222';
+                elements.colorToggle.style.color = colorState ? '#000' : '#0f0';
+            };
+        }
+        
+        if (elements.colorMode) {
+            elements.colorMode.onclick = () => {
+                clift.colorMode = (clift.colorMode + 1) % 3;
+                const modes = ['Full', 'Mono', 'Accent'];
+                elements.colorMode.textContent = modes[clift.colorMode];
+            };
+        }
+        
+        if (elements.colorInvert) {
+            elements.colorInvert.onclick = () => {
+                const invertState = clift.toggleInvertColors();
+                elements.colorInvert.textContent = invertState ? 'ON' : 'OFF';
+                elements.colorInvert.style.background = invertState ? '#0f0' : '#222';
+                elements.colorInvert.style.color = invertState ? '#000' : '#0f0';
+            };
+        }
+        
+        // Color system controls using proper engine methods
+        if (elements.primaryPrev) {
+            elements.primaryPrev.onclick = () => {
+                // Cycle backwards through colors
+                const current = clift.getPrimaryColor();
+                const newColor = current <= 1 ? 10 : current - 1;
+                clift.setPrimaryColor(newColor);
+                updateUI();
+            };
+        }
+        
+        if (elements.primaryNext) {
+            elements.primaryNext.onclick = () => {
+                clift.nextPrimaryColor();
+                updateUI();
+            };
+        }
+        
+        if (elements.secondaryPrev) {
+            elements.secondaryPrev.onclick = () => {
+                // Cycle backwards through colors
+                const current = clift.getSecondaryColor();
+                const newColor = current <= 1 ? 10 : current - 1;
+                clift.setSecondaryColor(newColor);
+                updateUI();
+            };
+        }
+        
+        if (elements.secondaryNext) {
+            elements.secondaryNext.onclick = () => {
+                clift.nextSecondaryColor();
+                updateUI();
+            };
+        }
+        
+        if (elements.gradientNext) {
+            elements.gradientNext.onclick = () => {
+                clift.cycleGradientType();
+                updateUI();
+            };
+        }
+        
+        // PostFX controls
+        // PostFX controls with proper implementation
+        let currentStyleIndex = 0;
+        let currentPresetIndex = 0; // Start with retro preset (index 0)
+        const styles = ['green', 'amber', 'blue', 'cyan', 'red', 'white'];
+        const presets = ['retro', 'heavy', 'cyberpunk', 'minimal'];
+        
+        if (elements.postfxToggle) {
+            elements.postfxToggle.onclick = () => {
+                console.log('PostFX toggle clicked');
+                if (window.CLIFTPostFX) {
+                    window.CLIFTPostFX.options.enabled = !window.CLIFTPostFX.options.enabled;
+                    const enabled = window.CLIFTPostFX.options.enabled;
+                    elements.postfxToggle.textContent = enabled ? 'ON' : 'OFF';
+                    elements.postfxToggle.style.background = enabled ? '#0f0' : '#222';
+                    elements.postfxToggle.style.color = enabled ? '#000' : '#0f0';
+                    console.log('PostFX enabled:', enabled);
+                } else {
+                    console.error('CLIFTPostFX not available');
+                }
+            };
+        }
+        
+        if (elements.postfxStyle) {
+            elements.postfxStyle.onclick = () => {
+                console.log('PostFX style clicked');
+                if (window.CLIFTPostFX) {
+                    currentStyleIndex = (currentStyleIndex + 1) % styles.length;
+                    const styleName = styles[currentStyleIndex];
+                    window.CLIFTPostFX.setStyle(styleName);
+                    elements.postfxStyle.textContent = styleName.toUpperCase();
+                    console.log('Style changed to:', styleName);
+                    
+                    // Visual feedback
+                    elements.postfxStyle.style.background = '#0f0';
+                    elements.postfxStyle.style.color = '#000';
+                    setTimeout(() => {
+                        elements.postfxStyle.style.background = '#222';
+                        elements.postfxStyle.style.color = '#0f0';
+                    }, 200);
+                }
+            };
+        }
+        
+        if (elements.postfxPreset) {
+            elements.postfxPreset.onclick = () => {
+                console.log('PostFX preset clicked');
+                if (window.CLIFTPostFX) {
+                    currentPresetIndex = (currentPresetIndex + 1) % presets.length;
+                    const presetName = presets[currentPresetIndex];
+                    window.CLIFTPostFX.applyPreset(presetName);
+                    elements.postfxPreset.textContent = presetName.toUpperCase();
+                    console.log('Preset changed to:', presetName);
+                    
+                    // Visual feedback
+                    elements.postfxPreset.style.background = '#0f0';
+                    elements.postfxPreset.style.color = '#000';
+                    setTimeout(() => {
+                        elements.postfxPreset.style.background = '#222';
+                        elements.postfxPreset.style.color = '#0f0';
+                    }, 200);
+                }
+            };
+        }
+        
+        // Glow controls - start with visible level
+        let glowLevel = 5; // Start at middle level for visibility
+        let glowEnabled = true;
+        
+        if (elements.glowDown) {
+            elements.glowDown.onclick = () => {
+                console.log('Glow down clicked');
+                glowLevel = Math.max(0, glowLevel - 1);
+                elements.glowLevel.textContent = glowLevel;
+                if (window.CLIFTPostFX) {
+                    window.CLIFTPostFX.options.glowIntensity = glowLevel * 0.8; // More reasonable CRT-like scaling
+                    console.log('Glow intensity set to:', window.CLIFTPostFX.options.glowIntensity);
+                }
+            };
+        }
+        
+        if (elements.glowUp) {
+            elements.glowUp.onclick = () => {
+                console.log('Glow up clicked');
+                glowLevel = Math.min(10, glowLevel + 1);
+                elements.glowLevel.textContent = glowLevel;
+                if (window.CLIFTPostFX) {
+                    window.CLIFTPostFX.options.glowIntensity = glowLevel * 0.8; // More reasonable CRT-like scaling
+                    console.log('Glow intensity set to:', window.CLIFTPostFX.options.glowIntensity);
+                }
+            };
+        }
+        
+        if (elements.glowToggle) {
+            elements.glowToggle.onclick = () => {
+                console.log('Glow toggle clicked');
+                glowEnabled = !glowEnabled;
+                elements.glowToggle.textContent = glowEnabled ? 'ON' : 'OFF';
+                elements.glowToggle.style.background = glowEnabled ? '#0f0' : '#222';
+                elements.glowToggle.style.color = glowEnabled ? '#000' : '#0f0';
+                if (window.CLIFTPostFX) {
+                    window.CLIFTPostFX.options.glowEnabled = glowEnabled;
+                    console.log('Glow enabled:', glowEnabled);
+                }
+            };
+        }
+        
+        // Resolution controls
+        if (elements.resDown) {
+            elements.resDown.onclick = () => {
+                const resolutions = [[40, 12], [60, 18], [80, 24], [100, 30], [120, 36], [160, 48]];
+                const current = resolutions.findIndex(r => r[0] === clift.width && r[1] === clift.height);
+                if (current > 0) {
+                    const newRes = resolutions[current - 1];
+                    clift.setResolution(newRes[0], newRes[1]);
+                    elements.resDisplay.textContent = `${newRes[0]}x${newRes[1]}`;
+                }
+            };
+        }
+        
+        if (elements.resUp) {
+            elements.resUp.onclick = () => {
+                const resolutions = [[40, 12], [60, 18], [80, 24], [100, 30], [120, 36], [160, 48]];
+                const current = resolutions.findIndex(r => r[0] === clift.width && r[1] === clift.height);
+                if (current < resolutions.length - 1) {
+                    const newRes = resolutions[current + 1];
+                    clift.setResolution(newRes[0], newRes[1]);
+                    elements.resDisplay.textContent = `${newRes[0]}x${newRes[1]}`;
+                }
+            };
+        }
+        
+        // Mode controls
+        if (elements.pauseToggle) {
+            elements.pauseToggle.onclick = () => {
+                clift.paused = !clift.paused;
+                elements.pauseToggle.textContent = clift.paused ? 'RESUME' : 'PAUSE';
+                elements.pauseToggle.style.background = clift.paused ? '#f80' : '#222';
+                elements.pauseToggle.style.color = clift.paused ? '#000' : '#0f0';
+            };
+        }
+        
+        if (elements.fullscreenToggle) {
+            elements.fullscreenToggle.onclick = () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                    elements.fullscreenToggle.textContent = 'Exit';
+                } else {
+                    document.exitFullscreen();
+                    elements.fullscreenToggle.textContent = 'Fullscreen';
+                }
+            };
+        }
+        
+        if (elements.recordToggle) {
+            elements.recordToggle.onclick = () => {
+                if (clift.toggleRecording) {
+                    clift.toggleRecording();
+                    elements.recordToggle.textContent = clift.recording ? 'Stop' : 'Start';
+                    elements.recordToggle.style.background = clift.recording ? '#f00' : '#222';
+                }
+            };
+        }
+        
+        // Auto mode with proper feedback
+        if (elements.fullAuto) {
+            elements.fullAuto.onclick = () => {
+                const autoState = clift.toggleFullAuto();
+                elements.fullAuto.textContent = autoState ? 'STOP AUTO' : 'Full Auto';
+                elements.fullAuto.style.background = autoState ? '#f80' : '#222';
+                elements.fullAuto.style.color = autoState ? '#000' : '#0f0';
+                if (elements.autoIndicator) {
+                    elements.autoIndicator.style.display = autoState ? 'inline' : 'none';
+                }
+            };
+        }
+
+        // Auto options toggle
+        if (elements.autoOptionsToggle && elements.autoOptionsPanel) {
+            elements.autoOptionsToggle.onclick = () => {
+                const isVisible = elements.autoOptionsPanel.style.display !== 'none';
+                elements.autoOptionsPanel.style.display = isVisible ? 'none' : 'block';
+                elements.autoOptionsToggle.textContent = isVisible ? 'Options' : 'Hide';
+                elements.autoOptionsToggle.style.background = isVisible ? '#222' : '#0f0';
+                elements.autoOptionsToggle.style.color = isVisible ? '#0f0' : '#000';
+            };
+        }
+
+        // Crossfader connection - CRITICAL for mixing!
+        if (elements.crossfader) {
+            const updateCrossfader = () => {
+                const value = parseFloat(elements.crossfader.value);
+                clift.crossfader = value / 100; // Convert 0-100 to 0-1
+                
+                // Update fade value display
+                const fadeValueElement = document.getElementById('fade-value');
+                if (fadeValueElement) {
+                    fadeValueElement.textContent = Math.round(value) + '%';
+                }
+                
+                console.log('Crossfader:', clift.crossfader, 'Visual:', value + '%');
+            };
+            
+            elements.crossfader.oninput = updateCrossfader;
+            elements.crossfader.onchange = updateCrossfader;
+            
+            // Initialize crossfader position
+            updateCrossfader();
+        }
+        
+        // Session save/load functionality
+        if (elements.saveSessionBtn) {
+            elements.saveSessionBtn.onclick = () => {
+                const sessionName = prompt('Enter session name:');
+                if (sessionName && sessionName.trim()) {
+                    const sessionData = {
+                        name: sessionName.trim(),
+                        timestamp: Date.now(),
+                        decks: {
+                            A: {
+                                scene: clift.decks[0].scene,
+                                category: clift.decks[0].category,
+                                primaryColor: clift.decks[0].primaryColor,
+                                secondaryColor: clift.decks[0].secondaryColor,
+                                gradientType: clift.decks[0].gradientType
+                            },
+                            B: {
+                                scene: clift.decks[1].scene,
+                                category: clift.decks[1].category,
+                                primaryColor: clift.decks[1].primaryColor,
+                                secondaryColor: clift.decks[1].secondaryColor,
+                                gradientType: clift.decks[1].gradientType
+                            }
+                        },
+                        crossfader: clift.crossfader,
+                        activeDeck: clift.activeDeck,
+                        currentEffect: clift.currentEffect,
+                        fps: clift.fps,
+                        bpm: clift.bpm,
+                        postfx: window.CLIFTPostFX ? {
+                            enabled: window.CLIFTPostFX.options.enabled,
+                            crtStyle: window.CLIFTPostFX.options.crtStyle,
+                            glowEnabled: window.CLIFTPostFX.options.glowEnabled,
+                            glowIntensity: window.CLIFTPostFX.options.glowIntensity,
+                            colorEnabled: window.CLIFTPostFX.options.colorEnabled
+                        } : null
+                    };
+                    
+                    // Create downloadable file
+                    const dataStr = JSON.stringify(sessionData, null, 2);
+                    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                    const url = URL.createObjectURL(dataBlob);
+                    
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `clift-session-${sessionName.replace(/[^a-zA-Z0-9]/g, '-')}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    
+                    console.log('Session saved:', sessionName);
+                } else {
+                    console.log('Save cancelled or invalid name');
+                }
+            };
+        }
+        
+        if (elements.loadSessionBtn) {
+            elements.loadSessionBtn.onclick = () => {
+                elements.loadFileInput.click();
+            };
+        }
+        
+        if (elements.loadFileInput) {
+            elements.loadFileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const sessionData = JSON.parse(event.target.result);
+                            
+                            // Validate session data structure
+                            if (!sessionData.decks || !sessionData.decks.A || !sessionData.decks.B) {
+                                throw new Error('Invalid session file format');
+                            }
+                            
+                            // Load deck settings
+                            clift.decks[0].scene = sessionData.decks.A.scene || 0;
+                            clift.decks[0].category = sessionData.decks.A.category || 0;
+                            clift.decks[0].primaryColor = sessionData.decks.A.primaryColor || 2;
+                            clift.decks[0].secondaryColor = sessionData.decks.A.secondaryColor || 2;
+                            clift.decks[0].gradientType = sessionData.decks.A.gradientType || 0;
+                            
+                            clift.decks[1].scene = sessionData.decks.B.scene || 0;
+                            clift.decks[1].category = sessionData.decks.B.category || 0;
+                            clift.decks[1].primaryColor = sessionData.decks.B.primaryColor || 2;
+                            clift.decks[1].secondaryColor = sessionData.decks.B.secondaryColor || 2;
+                            clift.decks[1].gradientType = sessionData.decks.B.gradientType || 0;
+                            
+                            // Load other settings
+                            clift.crossfader = sessionData.crossfader || 0.5;
+                            clift.activeDeck = sessionData.activeDeck || 0;
+                            clift.currentEffect = sessionData.currentEffect || 0;
+                            clift.fps = sessionData.fps || 30;
+                            clift.bpm = sessionData.bpm || 120;
+                            
+                            // Load PostFX settings
+                            if (sessionData.postfx && window.CLIFTPostFX) {
+                                window.CLIFTPostFX.options.enabled = sessionData.postfx.enabled || false;
+                                window.CLIFTPostFX.options.crtStyle = sessionData.postfx.crtStyle || 'green';
+                                window.CLIFTPostFX.options.glowEnabled = sessionData.postfx.glowEnabled || false;
+                                window.CLIFTPostFX.options.glowIntensity = sessionData.postfx.glowIntensity || 5;
+                                window.CLIFTPostFX.options.colorEnabled = sessionData.postfx.colorEnabled || false;
+                            }
+                            
+                            // Update UI to reflect loaded state
+                            updateUI();
+                            updateSceneButtons();
+                            
+                            // Crossfader removed for direct audio reactivity
+                            
+                            // Update deck selectors
+                            elements.deckA.classList.toggle('active', clift.activeDeck === 0);
+                            elements.deckB.classList.toggle('active', clift.activeDeck === 1);
+                            
+                            console.log('Session loaded:', sessionData.name || file.name);
+                            alert('Session loaded successfully!');
+                            
+                        } catch (error) {
+                            console.error('Error loading session:', error);
+                            alert('Error loading session file: ' + error.message);
+                        }
+                        
+                        // Reset file input
+                        e.target.value = '';
+                    };
+                    reader.readAsText(file);
+                }
+            };
+        }
+        
+        // TOOL BUTTONS - Help, Editor, Shortcuts
+        if (elements.helpBtn) {
+            elements.helpBtn.onclick = () => {
+                const helpText = `
+CLIFT Web - ASCII VJ Software Help
+
+🎮 CONTROLS:
+• Deck A/B selector - Switch between dual decks instantly
+• Scene grid (0-9) - Direct scene selection  
+• Category/Scene arrows - Navigate scenes
+• Trigger - Switch between decks immediately
+• Effects - Apply visual effects
+
+🎨 POST-FX:
+• Toggle - Enable/disable post-processing
+• Style - CRT monitor colors (green, amber, blue, etc.)
+• Preset - Effect presets (minimal, retro, heavy, cyberpunk)
+• Glow - Adjustable clean CRT glow (0-10)
+
+🎵 AUDIO:
+• Enable - Start microphone input or fake audio
+• FFT visualizer shows frequency bands
+
+🤖 AUTO MODE:
+• Full Auto - Complete automation of all parameters
+• Speed controls - Adjust BPM for automation timing
+
+⌨️ KEYBOARD SHORTCUTS:
+Basic: H = Help, E = Editor, Space = Pause, F = Fullscreen, A = Audio, C = Color
+Navigation: Arrow Keys, 0-9 = Direct scene, Tab = Switch deck, Esc = Stop auto
+Crossfader: X = Toggle, Z = Deck A, V = Deck B, B = Center, -/+ = Fine adjust
+Effects: P = PostFX, G = Glow, S = Style, D = Preset, L/; = Effect, [/] = Glow intensity
+Colors: I = Invert, N = Primary, J = Secondary, K = Gradient
+Performance: R = Record, M = Auto, Q/W = Resolution, Y/U = FPS, T/O = BPM
+Presets: F1 = Save, F2 = Load, F3 = Delete
+
+💾 SESSION:
+• Save - Store current state locally
+• Load - Restore saved state
+• Export - Download session file
+• Import - Upload session file
+                `;
+                
+                // Create styled help modal
+                const helpDiv = document.createElement('div');
+                helpDiv.style.cssText = `
+                    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                    background: rgba(0,0,0,0.95); color: #0f0; padding: 20px; 
+                    border: 2px solid #0f0; font-family: monospace; font-size: 12px;
+                    white-space: pre-line; max-width: 600px; max-height: 80vh; 
+                    overflow-y: auto; z-index: 10000; line-height: 1.4;
+                `;
+                helpDiv.textContent = helpText;
+                
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = 'CLOSE';
+                closeBtn.style.cssText = `
+                    background: #0f0; color: #000; border: none; padding: 5px 15px;
+                    margin-top: 10px; cursor: pointer; font-family: monospace;
+                `;
+                closeBtn.onclick = () => document.body.removeChild(helpDiv);
+                helpDiv.appendChild(closeBtn);
+                
+                document.body.appendChild(helpDiv);
+            };
+        }
+        
+        if (elements.shortcutsBtn) {
+            elements.shortcutsBtn.onclick = () => {
+                const shortcuts = `
+⌨️ CLIFT Web Keyboard Shortcuts
+
+🎮 NAVIGATION:
+Arrow Keys:
+  ↑ ↓  = Change Category (0-24)
+  ← →  = Change Scene (0-9)
+
+Number Keys:
+  0-9  = Direct Scene Selection
+
+🎛️ CONTROLS:
+  H    = Show Help
+  E    = Scene Editor (if available)
+  SPACE = Pause/Resume
+  F    = Toggle Fullscreen
+  A    = Audio Enable/Disable
+  C    = Color Toggle
+
+🎨 ADVANCED:
+  TAB  = Switch Active Deck
+  ESC  = Stop Full Auto Mode
+
+Note: Click on the page first if shortcuts don't work.
+                `;
+                
+                const shortcutsDiv = document.createElement('div');
+                shortcutsDiv.style.cssText = `
+                    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                    background: rgba(0,0,0,0.95); color: #0f0; padding: 20px; 
+                    border: 2px solid #0f0; font-family: monospace; font-size: 12px;
+                    white-space: pre-line; max-width: 500px; max-height: 80vh; 
+                    overflow-y: auto; z-index: 10000; line-height: 1.4;
+                `;
+                shortcutsDiv.textContent = shortcuts;
+                
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = 'CLOSE';
+                closeBtn.style.cssText = `
+                    background: #0f0; color: #000; border: none; padding: 5px 15px;
+                    margin-top: 10px; cursor: pointer; font-family: monospace;
+                `;
+                closeBtn.onclick = () => document.body.removeChild(shortcutsDiv);
+                shortcutsDiv.appendChild(closeBtn);
+                
+                document.body.appendChild(shortcutsDiv);
+            };
+        }
+        
+        // About button handler
+        if (elements.aboutBtn) {
+            elements.aboutBtn.onclick = () => {
+                elements.aboutModal.style.display = 'block';
+            };
+        }
+        
+        // About modal close handlers
+        if (elements.aboutClose) {
+            elements.aboutClose.onclick = () => {
+                elements.aboutModal.style.display = 'none';
+            };
+        }
+        
+        // Close modal when clicking outside
+        if (elements.aboutModal) {
+            elements.aboutModal.onclick = (event) => {
+                if (event.target === elements.aboutModal) {
+                    elements.aboutModal.style.display = 'none';
+                }
+            };
+        }
+        
+        if (elements.unifiedEditorBtn) {
+            elements.unifiedEditorBtn.onclick = () => {
+                if (window.CLIFTSceneEditor && window.CLIFTSceneEditor.toggle) {
+                    window.CLIFTSceneEditor.toggle();
+                } else {
+                    alert('Scene Editor not available in this version');
+                }
+            };
+        }
+        
+        // Audio controls
+        if (elements.audioToggle) {
+            elements.audioToggle.onclick = async (event) => {
+                try {
+                    console.log('Audio button clicked - User gesture:', event.isTrusted);
+                    console.log('Audio button clicked, current audioEnabled:', clift.audioEnabled);
+                    console.log('Browser User Agent:', navigator.userAgent);
+                    
+                    // Ensure this is a trusted user gesture for Chrome
+                    if (!event.isTrusted) {
+                        console.warn('Click event is not trusted - this may cause issues in Chrome');
+                    }
+                    
+                    // Disable button during async operation
+                    elements.audioToggle.disabled = true;
+                    elements.audioToggle.textContent = 'Loading...';
+                    
+                    await clift.toggleAudio();
+                    console.log('Audio toggled, new audioEnabled:', clift.audioEnabled);
+                    
+                    // Update button state
+                    elements.audioToggle.textContent = clift.audioEnabled ? 'ON' : 'Enable';
+                    elements.audioToggle.style.background = clift.audioEnabled ? '#0f0' : '#222';
+                    elements.audioToggle.style.color = clift.audioEnabled ? '#000' : '#0f0';
+                    elements.audioToggle.disabled = false;
+                    
+                    // Always show audio visualizer, but update the label
+                    if (elements.audioVisualizer) {
+                        elements.audioVisualizer.style.display = 'block';
+                        
+                        // Update the FFT label based on audio state
+                        const fftLabel = elements.audioVisualizer.querySelector('div');
+                        if (fftLabel) {
+                            fftLabel.textContent = clift.audioEnabled ? 'FFT' : 'FFT (Simulated)';
+                        }
+                        
+                        // Update audio status
+                        if (elements.audioStatus) {
+                            elements.audioStatus.textContent = clift.audioEnabled ? 'Live Microphone' : 'Simulated Audio';
+                        }
+                        
+                        console.log('Visualizer display set to: block, mode:', clift.audioEnabled ? 'real' : 'simulated');
+                    }
+                } catch (err) {
+                    console.error('Audio failed:', err);
+                    
+                    // Chrome-specific error handling
+                    let errorMessage = 'Failed';
+                    if (navigator.userAgent.includes('Chrome')) {
+                        if (err.message.includes('Permission denied') || err.name === 'NotAllowedError') {
+                            errorMessage = 'Permission Denied';
+                            console.error('Chrome microphone permission denied. User needs to:');
+                            console.error('1. Click the microphone icon in the address bar');
+                            console.error('2. Select "Allow" for microphone access');
+                            console.error('3. Reload the page and try again');
+                        } else if (err.message.includes('HTTPS')) {
+                            errorMessage = 'Need HTTPS';
+                        } else if (err.message.includes('NotFoundError')) {
+                            errorMessage = 'No Microphone';
+                        }
+                    }
+                    
+                    elements.audioToggle.textContent = errorMessage;
+                    elements.audioToggle.disabled = false;
+                    if (elements.audioVisualizer) {
+                        elements.audioVisualizer.style.display = 'none';
+                    }
+                    
+                    // Show user-friendly alert for Chrome users
+                    if (navigator.userAgent.includes('Chrome') && err.name === 'NotAllowedError') {
+                        setTimeout(() => {
+                            alert('Chrome blocked microphone access. Please:\\n\\n1. Click the microphone icon in your address bar\\n2. Select \"Allow\"\\n3. Refresh the page and try again');
+                        }, 100);
+                    }
+                }
+            };
+        }
+        
+        // Audio gain control
+        if (elements.audioGain && elements.gainValue) {
+            elements.audioGain.oninput = (e) => {
+                const gainValue = parseFloat(e.target.value);
+                elements.gainValue.textContent = gainValue.toFixed(1);
+                
+                // Visual feedback - color based on gain level
+                if (gainValue >= 3.0) {
+                    elements.gainValue.style.color = '#ff0000'; // Red for high gain
+                } else if (gainValue >= 2.0) {
+                    elements.gainValue.style.color = '#ff8800'; // Orange for medium-high
+                } else if (gainValue >= 1.5) {
+                    elements.gainValue.style.color = '#ffff00'; // Yellow for medium
+                } else {
+                    elements.gainValue.style.color = '#00ff00'; // Green for normal/low
+                }
+                
+                // Update gain in audio system if available
+                if (window.CLIFTAudio && window.CLIFTAudio.setGain) {
+                    window.CLIFTAudio.setGain(gainValue);
+                }
+            };
+        }
+        
+        // Experimental rendering mode toggle
+        console.log('Setting up surface toggle, elements:', elements.surfaceToggle, elements.surfaceStatus);
+        if (elements.surfaceToggle && elements.surfaceStatus) {
+            console.log('Surface toggle found, adding click handler');
+            elements.surfaceToggle.onclick = () => {
+                try {
+                    console.log('Render mode toggle clicked, clift available:', !!window.clift);
+                    if (!window.clift) {
+                        console.error('CLIFT engine not available');
+                        return;
+                    }
+                    const result = clift.toggleRenderMode();
+                    
+                    // Update button and status text
+                    const isExperimental = clift.currentRenderMode !== 0;
+                    elements.surfaceToggle.textContent = isExperimental ? `${result.mode} (${result.index}/8)` : 'Experimental';
+                    elements.surfaceToggle.style.background = isExperimental ? '#0f0' : '#222';
+                    elements.surfaceToggle.style.color = isExperimental ? '#000' : '#0f0';
+                    elements.surfaceStatus.textContent = isExperimental ? `${result.mode} Rendering` : 'ASCII Rendering';
+                    
+                    console.log('Render mode changed to:', result.mode);
+                } catch (error) {
+                    console.error('Error toggling render mode:', error);
+                }
+            };
+        }
+        
+        
+        // Audio visualizer update function
+        function updateAudioVisualizer() {
+            if (!elements.audioVisualizer) {
+                return;
+            }
+            
+            // Check if audio visualizer is actually visible
+            if (elements.audioVisualizer.style.display === 'none') {
+                return;
+            }
+            
+            // Get band levels from either real audio or simulated data
+            let bandLevels;
+            if (clift.audioEnabled && window.CLIFTAudio) {
+                // Real audio data
+                bandLevels = window.CLIFTAudio.calculateBandLevels();
+            } else {
+                // Use simulated audio data from engine
+                const audioInfo = clift.getAudioInfo();
+                if (audioInfo && audioInfo.bands) {
+                    bandLevels = audioInfo.bands;
+                } else {
+                    // Fallback to basic simulated data
+                    const time = performance.now() * 0.001;
+                    bandLevels = {
+                        bass: 0.3 + Math.sin(time * 2) * 0.2,
+                        lowMid: 0.3 + Math.sin(time * 1.5) * 0.15,
+                        mid: 0.3 + Math.sin(time * 2.5) * 0.1,
+                        highMid: 0.3 + Math.sin(time * 3) * 0.08,
+                        treble: 0.3 + Math.sin(time * 4) * 0.05,
+                        overall: 0.3
+                    };
+                }
+            }
+            
+            // Debug: log the band levels occasionally
+            if (Math.random() < 0.01) { // 1% of the time
+                console.log('Band levels:', bandLevels);
+            }
+            
+            // Map 5 bands to our 4 UI bars
+            const uiBands = {
+                bass: bandLevels.bass,                          // Bass (20-250Hz)
+                low: bandLevels.lowMid,                         // Low-Mid (250-500Hz) 
+                mid: (bandLevels.mid + bandLevels.highMid) / 2, // Mid+High-Mid (500-4000Hz)
+                high: bandLevels.treble                         // Treble (4000-20000Hz)
+            };
+            
+            // Update bar heights (max height 24px, min 3px)
+            const maxHeight = 24;
+            const minHeight = 3;
+            if (elements.fftBass) {
+                elements.fftBass.style.height = Math.max(minHeight, Math.round(uiBands.bass * maxHeight)) + 'px';
+            }
+            if (elements.fftLow) {
+                elements.fftLow.style.height = Math.max(minHeight, Math.round(uiBands.low * maxHeight)) + 'px';
+            }
+            if (elements.fftMid) {
+                elements.fftMid.style.height = Math.max(minHeight, Math.round(uiBands.mid * maxHeight)) + 'px';
+            }
+            if (elements.fftHigh) {
+                elements.fftHigh.style.height = Math.max(minHeight, Math.round(uiBands.high * maxHeight)) + 'px';
+            }
+            
+            // Update beat indicator
+            if (elements.beatIndicator && window.CLIFTAudio.beatDetector) {
+                const beatIntensity = window.CLIFTAudio.beatDetector.beatIntensity || 0;
+                if (beatIntensity > 0.3) {
+                    elements.beatIndicator.style.background = '#f00';
+                    elements.beatIndicator.style.transform = 'scale(1.5)';
+                } else {
+                    elements.beatIndicator.style.background = '#444';
+                    elements.beatIndicator.style.transform = 'scale(1.0)';
+                }
+            }
+        }
+        
+        // Initialize the visualizer to show simulated data by default
+        if (elements.audioVisualizer) {
+            elements.audioVisualizer.style.display = 'block';
+            
+            // Set initial labels for simulated mode
+            const fftLabel = elements.audioVisualizer.querySelector('div');
+            if (fftLabel) {
+                fftLabel.textContent = 'FFT (Simulated)';
+            }
+            
+            if (elements.audioStatus) {
+                elements.audioStatus.textContent = 'Simulated Audio';
+            }
+        }
+
+        // Start audio visualizer update loop
+        function startAudioVisualizerLoop() {
+            updateAudioVisualizer();
+            requestAnimationFrame(startAudioVisualizerLoop);
+        }
+        startAudioVisualizerLoop();
+        
+        // Transition system handled by TransitionEngine later
+        
+        // ============================================
+        // SCENE TRANSITION SYSTEM
+        // ============================================
+        
+        const TransitionEngine = {
+            types: ['Crossfade', 'Glitch', 'Wipe', 'Spiral'],
+            currentType: 0,
+            speed: 1.0,
+            autoEnabled: false,
+            isTransitioning: false,
+            transitionProgress: 0,
+            capturedScenes: { old: null, new: null },
+            lastBeatTime: 0,
+            
+            // Transition type implementations
+            effects: {
+                crossfade: function(oldBuffer, newBuffer, progress) {
+                    const result = [];
+                    for (let y = 0; y < oldBuffer.length; y++) {
+                        result[y] = [];
+                        for (let x = 0; x < oldBuffer[0].length; x++) {
+                            // Simple character mixing based on progress
+                            if (Math.random() < progress) {
+                                result[y][x] = newBuffer[y][x];
+                            } else {
+                                result[y][x] = oldBuffer[y][x];
+                            }
+                        }
+                    }
+                    return result;
+                },
+                
+                glitch: function(oldBuffer, newBuffer, progress) {
+                    const result = [];
+                    const glitchIntensity = Math.sin(progress * Math.PI * 6) * 0.5 + 0.5;
+                    
+                    for (let y = 0; y < oldBuffer.length; y++) {
+                        result[y] = [];
+                        for (let x = 0; x < oldBuffer[0].length; x++) {
+                            // Glitch effect with digital noise
+                            const useNew = Math.random() < progress;
+                            let char = useNew ? newBuffer[y][x] : oldBuffer[y][x];
+                            
+                            // Add glitch artifacts
+                            if (Math.random() < glitchIntensity * 0.1) {
+                                const glitchChars = '░▒▓█▄▀■□▪▫';
+                                char = glitchChars[Math.floor(Math.random() * glitchChars.length)];
+                            }
+                            
+                            result[y][x] = char;
+                        }
+                    }
+                    return result;
+                },
+                
+                wipe: function(oldBuffer, newBuffer, progress) {
+                    const result = [];
+                    const wipePosition = Math.floor(progress * oldBuffer[0].length);
+                    
+                    for (let y = 0; y < oldBuffer.length; y++) {
+                        result[y] = [];
+                        for (let x = 0; x < oldBuffer[0].length; x++) {
+                            result[y][x] = x < wipePosition ? newBuffer[y][x] : oldBuffer[y][x];
+                        }
+                    }
+                    return result;
+                },
+                
+                spiral: function(oldBuffer, newBuffer, progress) {
+                    const result = [];
+                    const centerX = Math.floor(oldBuffer[0].length / 2);
+                    const centerY = Math.floor(oldBuffer.length / 2);
+                    const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY);
+                    const currentRadius = progress * maxRadius;
+                    
+                    // Copy old buffer first
+                    for (let y = 0; y < oldBuffer.length; y++) {
+                        result[y] = [...oldBuffer[y]];
+                    }
+                    
+                    // Apply spiral transition
+                    for (let y = 0; y < oldBuffer.length; y++) {
+                        for (let x = 0; x < oldBuffer[0].length; x++) {
+                            const dx = x - centerX;
+                            const dy = y - centerY;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            const angle = Math.atan2(dy, dx);
+                            
+                            // Spiral equation with time-based rotation
+                            const spiralFactor = (angle + progress * Math.PI * 4) / (Math.PI * 2);
+                            const spiralRadius = spiralFactor * maxRadius * 0.1;
+                            
+                            if (distance < currentRadius + spiralRadius) {
+                                result[y][x] = newBuffer[y][x];
+                            }
+                        }
+                    }
+                    return result;
+                }
+            },
+            
+            // Capture current scene state  
+            captureScene: function(deckIndex) {
+                if (!clift || !clift.buffer) return null;
+                
+                // Create deep copy of current buffer
+                const captured = [];
+                for (let y = 0; y < clift.buffer.length; y++) {
+                    captured[y] = [...clift.buffer[y]];
+                }
+                return captured;
+            },
+            
+            // Main trigger method
+            trigger: function() {
+                if (this.isTransitioning) {
+                    console.log('Transition already in progress');
+                    return;
+                }
+                
+                console.log('Starting transition:', this.types[this.currentType]);
+                
+                // Capture current scene (old)
+                this.capturedScenes.old = this.captureScene(clift.activeDeck);
+                
+                // Switch deck and capture new scene
+                clift.activeDeck = 1 - clift.activeDeck;
+                
+                // Wait a frame for new scene to render, then capture it
+                setTimeout(() => {
+                    this.capturedScenes.new = this.captureScene(clift.activeDeck);
+                    
+                    // Start transition
+                    this.isTransitioning = true;
+                    this.transitionProgress = 0;
+                    this.startTime = Date.now();
+                    
+                    this.animate();
+                }, 50);
+            },
+            
+            // Animation loop
+            animate: function() {
+                if (!this.isTransitioning) return;
+                
+                const elapsed = Date.now() - this.startTime;
+                this.transitionProgress = Math.min(1.0, elapsed / (this.speed * 1000));
+                
+                if (this.transitionProgress >= 1.0) {
+                    this.finish();
+                    return;
+                }
+                
+                // Update crossfader position during transition
+                const crossfaderElement = document.getElementById('crossfader');
+                const fadeValueElement = document.getElementById('fade-value');
+                if (crossfaderElement && fadeValueElement) {
+                    // Animate crossfader from current deck to opposite deck
+                    const targetDeck = clift.activeDeck; // The deck we're transitioning TO
+                    const startValue = targetDeck === 0 ? 100 : 0; // Start from opposite deck
+                    const endValue = targetDeck === 0 ? 0 : 100;   // End at target deck
+                    
+                    const currentValue = startValue + (endValue - startValue) * this.transitionProgress;
+                    crossfaderElement.value = currentValue;
+                    fadeValueElement.textContent = Math.round(currentValue) + '%';
+                    
+                    // Update clift.crossfader to match
+                    clift.crossfader = currentValue / 100;
+                }
+                
+                // Apply transition effect
+                if (this.capturedScenes.old && this.capturedScenes.new) {
+                    const effectName = this.types[this.currentType].toLowerCase();
+                    if (this.effects[effectName]) {
+                        const transitionedBuffer = this.effects[effectName](
+                            this.capturedScenes.old,
+                            this.capturedScenes.new,
+                            this.transitionProgress
+                        );
+                        
+                        // Apply to current buffer
+                        for (let y = 0; y < clift.buffer.length && y < transitionedBuffer.length; y++) {
+                            for (let x = 0; x < clift.buffer[y].length && x < transitionedBuffer[y].length; x++) {
+                                clift.buffer[y][x] = transitionedBuffer[y][x];
+                            }
+                        }
+                    }
+                }
+                
+                requestAnimationFrame(() => this.animate());
+            },
+            
+            // Finish transition
+            finish: function() {
+                this.isTransitioning = false;
+                this.transitionProgress = 0;
+                this.capturedScenes.old = null;
+                this.capturedScenes.new = null;
+                
+                // Ensure crossfader is in final position
+                const crossfaderElement = document.getElementById('crossfader');
+                const fadeValueElement = document.getElementById('fade-value');
+                if (crossfaderElement && fadeValueElement) {
+                    const finalValue = clift.activeDeck === 0 ? 0 : 100;
+                    crossfaderElement.value = finalValue;
+                    fadeValueElement.textContent = finalValue + '%';
+                    clift.crossfader = finalValue / 100;
+                }
+                
+                // Update deck UI
+                elements.deckA.classList.toggle('active', clift.activeDeck === 0);
+                elements.deckB.classList.toggle('active', clift.activeDeck === 1);
+                updateSceneButtons();
+                
+                console.log('Transition completed to Deck', clift.activeDeck === 0 ? 'A' : 'B');
+            },
+            
+            // Beat detection handler
+            onBeat: function() {
+                if (!this.autoEnabled || this.isTransitioning) return;
+                
+                const now = Date.now();
+                if (now - this.lastBeatTime > 2000) { // Minimum 2 seconds between auto transitions
+                    this.lastBeatTime = now;
+                    this.trigger();
+                }
+            }
+        };
+        
+        // Make TransitionEngine globally accessible
+        window.TransitionEngine = TransitionEngine;
+        
+        // ============================================
+        // TRANSITION CONTROL HANDLERS
+        // ============================================
+        
+        // Simplified transition controls - direct deck switching for immediate audio response
+        const transitionTrigger = document.getElementById('transition-trigger');
+        const autoTransition = document.getElementById('auto-transition');
+        
+        // Transition trigger button - uses TransitionEngine for animated crossfade
+        if (transitionTrigger) {
+            transitionTrigger.onclick = () => {
+                TransitionEngine.trigger();
+            };
+        }
+        
+        // Auto transition toggle - simplified for beat switching
+        if (autoTransition) {
+            autoTransition.onchange = () => {
+                TransitionEngine.autoEnabled = autoTransition.checked;
+                console.log('Auto beat deck switching:', TransitionEngine.autoEnabled ? 'enabled' : 'disabled');
+            };
+        }
+        
+        // ============================================
+        // SCENE UI HELPERS
+        // ============================================
+        
+        // Update scene buttons and UI state
+        function updateSceneButtons() {
+            try {
+                if (!clift.decks || !clift.decks[clift.activeDeck] || !elements.sceneButtons) {
+                    return;
+                }
+                
+                const deck = clift.decks[clift.activeDeck];
+                
+                // Define scene ranges for different categories
+                let sceneOffset = 0;
+                let sceneRange = 10;
+                
+                // Special case for category 20 (Human Animation) - scenes 5-14
+                if (deck.category === 20) {
+                    sceneOffset = 5;
+                    sceneRange = 10;
+                }
+                // Special case for category 21 (Giger Cyberpunk) - scenes 5-14
+                else if (deck.category === 21) {
+                    sceneOffset = 5;
+                    sceneRange = 10;
+                }
+                
+                elements.sceneButtons.forEach((btn, index) => {
+                    if (!btn) return;
+                    
+                    const actualSceneNum = sceneOffset + index;
+                    const sceneId = deck.category * 10 + actualSceneNum;
+                    
+                    // Update button text and data-scene attribute
+                    btn.textContent = actualSceneNum;
+                    btn.setAttribute('data-scene', actualSceneNum);
+                    
+                    // Highlight current scene
+                    btn.classList.toggle('current', actualSceneNum === deck.scene);
+                    
+                    // Hide buttons that are outside the available range
+                    btn.style.display = index < sceneRange ? 'flex' : 'none';
+                });
+            } catch (error) {
+                console.error('Error in updateSceneButtons:', error);
+            }
+        }
+        
+        // Category names mapping
+        const categoryNames = {
+            0: 'Audio Reactive',
+            1: 'Geometric Patterns', 
+            2: 'Advanced Audio',
+            3: 'Text & Typography',
+            4: 'Particle Systems',
+            5: 'Abstract & Psychedelic',
+            6: 'Cellular Automata',
+            7: 'Fluid Dynamics',
+            8: 'Generative Art',
+            9: 'Interactive',
+            10: 'Experimental',
+            11: 'Interactive & Responsive',
+            12: 'Fusion & Hybrid',
+            13: 'Minimal & Zen',
+            14: 'Finale & Epic',
+            15: 'Ikeda-Inspired',
+            16: 'Giger-Inspired',
+            17: 'Revolt',
+            18: 'Audio Reactive Pro',
+            19: 'Creative Mix',
+            20: 'Human Animation',
+            21: 'Giger Cyberpunk',
+            22: 'Fractal Mathematics',
+            23: 'Retro Computing',
+            24: 'Music Visualization',
+            25: 'Generative Art Pro'
+        };
+        
+        
+        // Preset management system
+        const presetManager = {
+            savePreset: function(name) {
+                if (!name || name.trim() === '') {
+                    alert('Please enter a preset name');
+                    return;
+                }
+                
+                const preset = {
+                    name: name.trim(),
+                    timestamp: Date.now(),
+                    decks: {
+                        A: {
+                            scene: clift.decks[0].scene,
+                            category: clift.decks[0].category,
+                            primaryColor: clift.decks[0].primaryColor,
+                            secondaryColor: clift.decks[0].secondaryColor,
+                            gradientType: clift.decks[0].gradientType
+                        },
+                        B: {
+                            scene: clift.decks[1].scene,
+                            category: clift.decks[1].category,
+                            primaryColor: clift.decks[1].primaryColor,
+                            secondaryColor: clift.decks[1].secondaryColor,
+                            gradientType: clift.decks[1].gradientType
+                        }
+                    },
+                    crossfader: clift.crossfader,
+                    activeDeck: clift.activeDeck,
+                    currentEffect: clift.currentEffect,
+                    fps: clift.fps,
+                    bpm: clift.bpm,
+                    postfx: window.CLIFTPostFX ? {
+                        enabled: window.CLIFTPostFX.options.enabled,
+                        crtStyle: window.CLIFTPostFX.options.crtStyle,
+                        glowEnabled: window.CLIFTPostFX.options.glowEnabled,
+                        glowIntensity: window.CLIFTPostFX.options.glowIntensity,
+                        colorEnabled: window.CLIFTPostFX.options.colorEnabled
+                    } : null
+                };
+                
+                const presets = this.getPresets();
+                presets[name] = preset;
+                localStorage.setItem('clift_presets', JSON.stringify(presets));
+                
+                console.log('Preset saved:', name);
+                this.updatePresetList();
+            },
+            
+            loadPreset: function(name) {
+                const presets = this.getPresets();
+                const preset = presets[name];
+                
+                if (!preset) {
+                    alert('Preset not found: ' + name);
+                    return;
+                }
+                
+                try {
+                    // Load deck settings
+                    clift.decks[0].scene = preset.decks.A.scene;
+                    clift.decks[0].category = preset.decks.A.category;
+                    clift.decks[0].primaryColor = preset.decks.A.primaryColor;
+                    clift.decks[0].secondaryColor = preset.decks.A.secondaryColor;
+                    clift.decks[0].gradientType = preset.decks.A.gradientType;
+                    
+                    clift.decks[1].scene = preset.decks.B.scene;
+                    clift.decks[1].category = preset.decks.B.category;
+                    clift.decks[1].primaryColor = preset.decks.B.primaryColor;
+                    clift.decks[1].secondaryColor = preset.decks.B.secondaryColor;
+                    clift.decks[1].gradientType = preset.decks.B.gradientType;
+                    
+                    // Load other settings
+                    clift.crossfader = preset.crossfader;
+                    clift.activeDeck = preset.activeDeck;
+                    clift.currentEffect = preset.currentEffect;
+                    clift.fps = preset.fps;
+                    clift.bpm = preset.bpm;
+                    
+                    // Load PostFX settings
+                    if (preset.postfx && window.CLIFTPostFX) {
+                        window.CLIFTPostFX.options.enabled = preset.postfx.enabled;
+                        window.CLIFTPostFX.options.crtStyle = preset.postfx.crtStyle;
+                        window.CLIFTPostFX.options.glowEnabled = preset.postfx.glowEnabled;
+                        window.CLIFTPostFX.options.glowIntensity = preset.postfx.glowIntensity;
+                        window.CLIFTPostFX.options.colorEnabled = preset.postfx.colorEnabled;
+                    }
+                    
+                    console.log('Preset loaded:', name);
+                } catch (error) {
+                    console.error('Error loading preset:', error);
+                    alert('Error loading preset: ' + name);
+                }
+            },
+            
+            deletePreset: function(name) {
+                if (!confirm('Delete preset "' + name + '"?')) {
+                    return;
+                }
+                
+                const presets = this.getPresets();
+                delete presets[name];
+                localStorage.setItem('clift_presets', JSON.stringify(presets));
+                
+                console.log('Preset deleted:', name);
+                this.updatePresetList();
+            },
+            
+            getPresets: function() {
+                try {
+                    const presets = localStorage.getItem('clift_presets');
+                    return presets ? JSON.parse(presets) : {};
+                } catch (error) {
+                    console.error('Error loading presets:', error);
+                    return {};
+                }
+            },
+            
+            updatePresetList: function() {
+                // This would update a UI list if we had one
+                // For now, just log the available presets
+                const presets = this.getPresets();
+                console.log('Available presets:', Object.keys(presets));
+            }
+        };
+        
+        // Comprehensive UI update function
+        function updateUI() {
+            try {
+                if (elements.scene) {
+                    elements.scene.textContent = clift.getCurrentScene();
+                }
+                if (elements.category && clift.decks && clift.decks[clift.activeDeck]) {
+                    const categoryNum = clift.decks[clift.activeDeck].category;
+                    const categoryName = categoryNames[categoryNum] || `Category ${categoryNum}`;
+                    elements.category.textContent = `${categoryNum}: ${categoryName}`;
+                }
+                if (elements.effect) {
+                    elements.effect.textContent = clift.getCurrentEffect();
+                }
+                if (elements.activeDeckIndicator) {
+                    elements.activeDeckIndicator.textContent = clift.activeDeck === 0 ? 'A' : 'B';
+                }
+            } catch (error) {
+                console.error('Error in updateUI:', error);
+            }
+            if (elements.resDisplay) {
+                elements.resDisplay.textContent = `${clift.width}x${clift.height}`;
+            }
+            
+            // Update color displays using proper engine methods
+            if (elements.primaryColor) {
+                elements.primaryColor.textContent = clift.getColorName(clift.getPrimaryColor()) || 'Grn';
+            }
+            if (elements.secondaryColor) {
+                elements.secondaryColor.textContent = clift.getColorName(clift.getSecondaryColor()) || 'Cyn';
+            }
+            if (elements.gradientType) {
+                elements.gradientType.textContent = clift.getGradientName() || 'Lin-H';
+            }
+            
+            updateSceneButtons();
+        }
+        
+        // Initialize UI state
+        function initializeUI() {
+            // Set initial button states based on engine state
+            if (elements.colorToggle) {
+                const colorState = clift.isColorEnabled();
+                elements.colorToggle.textContent = colorState ? 'ON' : 'OFF';
+                elements.colorToggle.style.background = colorState ? '#0f0' : '#222';
+                elements.colorToggle.style.color = colorState ? '#000' : '#0f0';
+            }
+            
+            if (elements.colorInvert) {
+                const invertState = clift.isInvertColors();
+                elements.colorInvert.textContent = invertState ? 'ON' : 'OFF';
+                elements.colorInvert.style.background = invertState ? '#0f0' : '#222';
+                elements.colorInvert.style.color = invertState ? '#000' : '#0f0';
+            }
+            
+            if (elements.colorMode) {
+                const modes = ['Full', 'Mono', 'Accent'];
+                elements.colorMode.textContent = modes[clift.getColorMode()] || 'Full';
+            }
+            
+            if (elements.postfxToggle) {
+                elements.postfxToggle.textContent = 'OFF';
+            }
+            
+            if (elements.audioToggle) {
+                elements.audioToggle.textContent = clift.audioEnabled ? 'ON' : 'Enable';
+                elements.audioToggle.style.background = clift.audioEnabled ? '#0f0' : '#222';
+                elements.audioToggle.style.color = clift.audioEnabled ? '#000' : '#0f0';
+            }
+            
+            if (elements.pauseToggle) {
+                elements.pauseToggle.textContent = 'PAUSE';
+            }
+            
+            if (elements.fullscreenToggle) {
+                elements.fullscreenToggle.textContent = 'Fullscreen';
+            }
+            
+            if (elements.recordToggle) {
+                elements.recordToggle.textContent = 'Start';
+            }
+            
+            if (elements.fullAuto) {
+                const autoState = clift.fullAuto;
+                elements.fullAuto.textContent = autoState ? 'STOP AUTO' : 'Full Auto';
+                elements.fullAuto.style.background = autoState ? '#f80' : '#222';
+                elements.fullAuto.style.color = autoState ? '#000' : '#0f0';
+                if (elements.autoIndicator) {
+                    elements.autoIndicator.style.display = autoState ? 'inline' : 'none';
+                }
+            }
+            
+            updateUI();
+        }
+        
+        // Initialize UI and start the engine
+        initializeUI();
+        clift.start();
+        
+        // Initialize PostFX system
+        setTimeout(() => {
+            console.log('Initializing PostFX system...');
+            console.log('CLIFTPostFX available:', !!window.CLIFTPostFX);
+            console.log('renderCanvas available:', !!clift.renderCanvas);
+            
+            if (window.CLIFTPostFX && clift.renderCanvas) {
+                try {
+                    window.CLIFTPostFX.init(clift.renderCanvas);
+                    
+                    // Start with PostFX disabled for safety
+                    window.CLIFTPostFX.options.enabled = false;
+                    
+                    // Start the render loop
+                    window.CLIFTPostFX.startRenderLoop();
+                    
+                    console.log('PostFX initialized successfully (disabled by default)');
+                    
+                    // Update button states to show PostFX is OFF initially
+                    elements.postfxToggle.textContent = 'OFF';
+                    elements.postfxToggle.style.background = '#222';
+                    elements.postfxToggle.style.color = '#0f0';
+                    
+                    if (elements.postfxStyle) {
+                        elements.postfxStyle.textContent = 'GREEN';
+                    }
+                    
+                    if (elements.postfxPreset) {
+                        elements.postfxPreset.textContent = 'MINIMAL';
+                    }
+                    
+                    elements.glowToggle.textContent = 'OFF';
+                    elements.glowToggle.style.background = '#222';
+                    elements.glowToggle.style.color = '#0f0';
+                    glowEnabled = false;
+                    
+                } catch (error) {
+                    console.error('PostFX initialization failed:', error);
+                }
+            } else {
+                console.error('PostFX or canvas not available');
+            }
+        }, 1000);
+        
+        // Enhanced UI update loop with beat detection feedback
+        setInterval(() => {
+            updateUI();
+            
+            // Crossfader removed - using direct deck switching for immediate response
+            
+            // Update beat indicator
+            const beatIndicator = document.getElementById('beat');
+            if (beatIndicator && clift.audioEnabled) {
+                let beatDetected = false;
+                
+                const timeSinceLastBeat = Date.now() - (clift.lastBeatTime || 0);
+                beatDetected = timeSinceLastBeat < 100;
+                
+                if (beatDetected) {
+                    beatIndicator.textContent = '●';
+                    beatIndicator.classList.add('beat');
+                } else {
+                    beatIndicator.textContent = '○';
+                    beatIndicator.classList.remove('beat');
+                }
+            }
+            
+            // Update audio visualizer if present
+            if (clift.audioEnabled && window.CLIFTAudio && window.CLIFTAudio.currentAudioData) {
+                const audioData = window.CLIFTAudio.currentAudioData;
+                
+                // Update FFT bars
+                const fftBars = ['fft-bass', 'fft-low', 'fft-mid', 'fft-high'];
+                fftBars.forEach((id, index) => {
+                    const bar = document.getElementById(id);
+                    if (bar && audioData.bands) {
+                        const bandNames = ['bass', 'lowMid', 'mid', 'treble'];
+                        const level = audioData.bands[bandNames[index]] || 0;
+                        const height = Math.max(3, Math.round(level * 24));
+                        bar.style.height = height + 'px';
+                        
+                        // Color based on intensity
+                        if (level > 0.8) {
+                            bar.style.background = '#ff0'; // Yellow for high
+                        } else if (level > 0.5) {
+                            bar.style.background = '#f80'; // Orange for medium
+                        } else {
+                            bar.style.background = '#0f0'; // Green for low
+                        }
+                    }
+                });
+                
+                // Update beat indicator if present
+                const beatIndicator = document.getElementById('beat');
+                if (beatIndicator && audioData.beat) {
+                    if (audioData.beat.detected) {
+                        beatIndicator.style.background = '#ff0000';
+                        beatIndicator.style.boxShadow = '0 0 10px #ff0000';
+                    } else {
+                        beatIndicator.style.background = '#330000';
+                        beatIndicator.style.boxShadow = 'none';
+                    }
+                }
+            }
+        }, 100);
+        
+        // Loading screen sequence
+        const loadingScreen = document.getElementById('loading-screen');
+        const loadingText = document.getElementById('loading-text');
+        
+        // Loading sequence with changing text
+        const loadingSteps = [
+            { text: 'INITIALIZING SYSTEMS...', delay: 500 },
+            { text: 'LOADING AUDIO ENGINE...', delay: 600 },
+            { text: 'COMPILING SCENES...', delay: 700 },
+            { text: 'SETTING UP EFFECTS...', delay: 600 },
+            { text: 'CALIBRATING FREQUENCIES...', delay: 500 },
+            { text: 'READY FOR LAUNCH...', delay: 400 }
+        ];
+        
+        let currentStep = 0;
+        function updateLoadingText() {
+            if (currentStep < loadingSteps.length) {
+                loadingText.textContent = loadingSteps[currentStep].text;
+                currentStep++;
+                setTimeout(updateLoadingText, loadingSteps[currentStep - 1].delay);
+            } else {
+                // All systems loaded - hide loading screen
+                setTimeout(() => {
+                    loadingScreen.classList.add('fade-out');
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                    }, 800);
+                }, 300);
+            }
+        }
+        
+        // Start loading sequence
+        updateLoadingText();
+        
+        console.log('CLIFT Web fully initialized with transition system');
+        console.log('=== KEYBOARD SHORTCUTS ===');
+        console.log('Basic: H=Help, E=Editor, Space=Pause, F=Fullscreen, A=Audio, C=Color');
+        console.log('Crossfader: X=Toggle, Z=Deck A, V=Deck B, B=Center, -/+=Fine adjust');
+        console.log('Navigation: Arrow keys, 0-9=Direct scene, Tab=Switch deck, Esc=Stop auto');
+        console.log('Effects: P=PostFX, G=Glow, S=Style, D=Preset, L/;=Effect, [/]=Glow intensity');
+        console.log('Colors: I=Invert, N=Primary, J=Secondary, K=Gradient');
+        console.log('Performance: R=Record, M=Auto, Q/W=Resolution, Y/U=FPS, T/O=BPM');
+        console.log('Presets: F1=Save, F2=Load, F3=Delete');
+        console.log('Transitions: Click TRIGGER button or enable Auto Beat mode');
+    </script>
+</body>
+</html>
