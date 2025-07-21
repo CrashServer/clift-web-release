@@ -641,6 +641,13 @@
         </div>
         
         <div class="control-group">
+            <strong>WEBSOCKET</strong><br>
+            <button id="websocket-toggle" style="width: 100%;">Connect (W)</button>
+            <div id="websocket-status" style="font-size: 10px; color: #888; margin-top: 2px; text-align: center;">OFFLINE</div>
+            <div style="font-size: 9px; color: #666; margin-top: 2px; text-align: center;">localhost:7745</div>
+        </div>
+        
+        <div class="control-group">
             <strong>RESOLUTION</strong><br>
             <button class="small" id="res-down">-</button>
             <span id="res-display">80x24</span>
@@ -871,6 +878,7 @@
             autoColors: document.getElementById('auto-colors'),
             autoResolution: document.getElementById('auto-resolution'),
             autoSubdivision: document.getElementById('auto-subdivision'),
+            websocketToggle: document.getElementById('websocket-toggle'),
             tapBpm: document.getElementById('tap-bpm'),
             bpmDisplay: document.getElementById('bpm-display'),
             bpmSlider: document.getElementById('bpm-slider'),
@@ -1002,6 +1010,10 @@
             deck.scene = Math.max(minScene, deck.scene - 1);
             updateSceneButtons();
             updateUI();
+            // Sync scene change with WebSocket
+            if (window.CLIFTWebSocket && window.CLIFTWebSocket.isConnected()) {
+                window.CLIFTWebSocket.Integration.syncSceneChange(clift, clift.activeDeck);
+            }
         };
         
         elements.sceneNext.onclick = () => {
@@ -1011,6 +1023,10 @@
             deck.scene = Math.min(maxScene, deck.scene + 1);
             updateSceneButtons();
             updateUI();
+            // Sync scene change with WebSocket
+            if (window.CLIFTWebSocket && window.CLIFTWebSocket.isConnected()) {
+                window.CLIFTWebSocket.Integration.syncSceneChange(clift, clift.activeDeck);
+            }
         };
         
         // Scene buttons
@@ -1028,6 +1044,10 @@
             elements.effectPrev.onclick = () => {
                 clift.prevEffect();
                 updateUI();
+                // Sync effect change with WebSocket
+                if (window.CLIFTWebSocket && window.CLIFTWebSocket.isConnected()) {
+                    window.CLIFTWebSocket.Integration.syncEffectChange(clift);
+                }
             };
         }
         
@@ -1035,6 +1055,10 @@
             elements.effectNext.onclick = () => {
                 clift.nextEffect();
                 updateUI();
+                // Sync effect change with WebSocket
+                if (window.CLIFTWebSocket && window.CLIFTWebSocket.isConnected()) {
+                    window.CLIFTWebSocket.Integration.syncEffectChange(clift);
+                }
             };
         }
         
@@ -1264,6 +1288,10 @@
                         clift.bpm = bpm;
                         elements.bpmDisplay.textContent = bpm;
                         elements.bpmSlider.value = bpm;
+                        // Sync BPM change with WebSocket
+                        if (window.CLIFTWebSocket && window.CLIFTWebSocket.isConnected()) {
+                            window.CLIFTWebSocket.Integration.syncBPMChange(clift);
+                        }
                     }
                 }
                 
@@ -1280,6 +1308,10 @@
                 clift.bpm = parseInt(elements.bpmSlider.value);
                 elements.bpmDisplay.textContent = clift.bpm;
                 tapTimes = []; // Clear tap history when manually adjusting
+                // Sync BPM change with WebSocket
+                if (window.CLIFTWebSocket && window.CLIFTWebSocket.isConnected()) {
+                    window.CLIFTWebSocket.Integration.syncBPMChange(clift);
+                }
             };
         }
         
@@ -1741,6 +1773,46 @@ Note: Click on the page first if shortcuts don't work.
                     window.CLIFTAudio.setGain(gainValue);
                 }
             };
+        }
+        
+        // WebSocket live coding controls
+        if (elements.websocketToggle && window.CLIFTWebSocket) {
+            elements.websocketToggle.onclick = () => {
+                if (window.CLIFTWebSocket.isConnected()) {
+                    window.CLIFTWebSocket.disconnect();
+                    elements.websocketToggle.textContent = 'Connect (W)';
+                    console.log('WebSocket: Disconnected via button');
+                } else {
+                    window.CLIFTWebSocket.connect();
+                    elements.websocketToggle.textContent = 'Connecting...';
+                    console.log('WebSocket: Connecting via button...');
+                }
+            };
+            
+            // Set up WebSocket event handlers for UI updates
+            window.CLIFTWebSocket.on('onConnect', () => {
+                elements.websocketToggle.textContent = 'Disconnect (W)';
+                const indicator = document.getElementById('websocket-status');
+                if (indicator) {
+                    indicator.textContent = 'CONNECTED';
+                    indicator.style.color = '#0f0';
+                }
+                console.log('WebSocket: Connected - UI updated');
+            });
+            
+            window.CLIFTWebSocket.on('onDisconnect', () => {
+                elements.websocketToggle.textContent = 'Connect (W)';
+                const indicator = document.getElementById('websocket-status');
+                if (indicator) {
+                    indicator.textContent = 'OFFLINE';
+                    indicator.style.color = '#f00';
+                }
+                console.log('WebSocket: Disconnected - UI updated');
+            });
+            
+            // Initialize WebSocket system (but don't auto-connect)
+            window.CLIFTWebSocket.init();
+            console.log('WebSocket system initialized');
         }
         
         // Experimental rendering mode toggle
@@ -2871,6 +2943,32 @@ Note: Click on the page first if shortcuts don't work.
                         window.CLIFTPostFX.setInvertColors(window.clift.invertColors);
                         
                         console.log(`Color Inversion: ${window.clift.invertColors ? 'ON' : 'OFF'} (synced)`);
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'w' || event.key === 'W') && !event.ctrlKey) {
+                    // W key - Toggle WebSocket connection
+                    if (window.CLIFTWebSocket) {
+                        if (window.CLIFTWebSocket.isConnected()) {
+                            window.CLIFTWebSocket.disconnect();
+                            console.log('WebSocket: Disconnected');
+                            
+                            // Update status indicator if it exists
+                            const indicator = document.getElementById('websocket-status');
+                            if (indicator) {
+                                indicator.textContent = 'WebSocket: OFFLINE';
+                                indicator.style.color = '#f00';
+                            }
+                        } else {
+                            window.CLIFTWebSocket.connect();
+                            console.log('WebSocket: Connecting...');
+                            
+                            // Update status indicator if it exists
+                            const indicator = document.getElementById('websocket-status');
+                            if (indicator) {
+                                indicator.textContent = 'WebSocket: CONNECTING...';
+                                indicator.style.color = '#ff0';
+                            }
+                        }
                     }
                     event.preventDefault();
                 }

@@ -6,7 +6,7 @@ window.CLIFTWebSocket = {
     connected: false,
     reconnectInterval: 5000,
     reconnectTimer: null,
-    serverUrl: 'ws://localhost:8080',
+    serverUrl: 'ws://localhost:7745',
     overlayElement: null,
     callbacks: {
         onConnect: [],
