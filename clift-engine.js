@@ -118,7 +118,7 @@ class CLIFTEngine {
         this.animationId = null;
         
         // Experimental Rendering Modes
-        this.renderModes = ['ASCII', 'Surface', 'Mesh', 'Particles', 'Lines', 'Dots', 'Waves', 'Plasma', '3D ASCII'];
+        this.renderModes = ['ASCII', 'Surface', 'Mesh', 'Particles', 'Lines', 'Dots', 'Waves', 'Plasma', '3D ASCII', '3D City', 'Spline', 'Terminal'];
         this.currentRenderMode = 0; // 0 = ASCII
         this.experimentalCanvas = null;
         this.experimentalCtx = null;
@@ -360,7 +360,7 @@ class CLIFTEngine {
         // Auto options helper function
         const getAutoOptions = () => {
             const elements = window.elements;
-            if (!elements) return { scenes: true, effects: true, crossfade: true, postfx: true, experimental: true, colors: true, subdivision: 4 };
+            if (!elements) return { scenes: true, effects: true, crossfade: true, postfx: true, experimental: true, colors: true, resolution: true, subdivision: 4 };
             
             return {
                 scenes: elements.autoScenes ? elements.autoScenes.checked : true,
@@ -369,6 +369,7 @@ class CLIFTEngine {
                 postfx: elements.autoPostfx ? elements.autoPostfx.checked : true,
                 experimental: elements.autoExperimental ? elements.autoExperimental.checked : true,
                 colors: elements.autoColors ? elements.autoColors.checked : true,
+                resolution: elements.autoResolution ? elements.autoResolution.checked : true,
                 subdivision: elements.autoSubdivision ? parseInt(elements.autoSubdivision.value) : 4
             };
         };
@@ -389,8 +390,8 @@ class CLIFTEngine {
                 const beatCount = Math.floor(currentTime / beatInterval);
                 const subdivision = options.subdivision;
                 
-                // Scene changes: every (16 / subdivision) beats
-                const sceneInterval = Math.max(1, Math.floor(16 / subdivision));
+                // Scene changes: very slow for visual consistency - every (128 / subdivision) beats (8x slower)
+                const sceneInterval = Math.max(16, Math.floor(128 / subdivision));
                 if (beatCount % sceneInterval === 0) {
                     if (options.crossfade) {
                         // Trigger crossfade transition
@@ -451,10 +452,18 @@ class CLIFTEngine {
                         window.CLIFTPostFX.setStyle(randomStyle);
                         console.log(`Full Auto Post-FX: ${randomPreset} / ${randomStyle}`);
                     }
+                    
+                    if (options.resolution) {
+                        // Resolution changes - cycle through available resolutions
+                        const resolutions = [[40, 12], [60, 18], [80, 24], [100, 30], [120, 36], [160, 48]];
+                        const randomResolution = resolutions[Math.floor(Math.random() * resolutions.length)];
+                        this.setResolution(randomResolution[0], randomResolution[1]);
+                        console.log(`Full Auto Resolution: ${randomResolution[0]}x${randomResolution[1]}`);
+                    }
                 }
                 
-                // Effect changes: every (8 / subdivision) beats
-                const effectInterval = Math.max(1, Math.floor(8 / subdivision));
+                // Effect changes: slower - every (16 / subdivision) beats  
+                const effectInterval = Math.max(2, Math.floor(16 / subdivision));
                 if (beatCount % effectInterval === 0 && beatCount % sceneInterval !== 0) {
                     if (options.effects) {
                         this.currentEffect = Math.floor(Math.random() * this.effects.length);
@@ -462,8 +471,8 @@ class CLIFTEngine {
                     }
                 }
                 
-                // Gradient and color changes: every (4 / subdivision) beats  
-                const colorInterval = Math.max(1, Math.floor(4 / subdivision));
+                // Gradient and color changes: slower - every (8 / subdivision) beats  
+                const colorInterval = Math.max(2, Math.floor(8 / subdivision));
                 if (beatCount % colorInterval === 0 && beatCount % effectInterval !== 0 && beatCount % sceneInterval !== 0) {
                     if (options.colors) {
                         // Random gradient type for current deck
@@ -486,25 +495,25 @@ class CLIFTEngine {
                     }
                 }
                 
-                // Crossfader and subtle changes: every 2 beats
-                if (beatCount % 2 === 0 && beatCount % 4 !== 0) {
-                    // Advanced crossfader automation with multiple patterns
-                    const pattern = Math.floor(currentTime / 15000) % 5;
+                // Crossfader and subtle changes: every 16 beats (very slow for visual consistency)
+                if (beatCount % 16 === 0 && beatCount % sceneInterval !== 0) {
+                    // Slower crossfader automation with longer patterns for visual consistency
+                    const pattern = Math.floor(currentTime / 30000) % 5; // Doubled pattern cycle time
                     switch (pattern) {
-                        case 0: // Smooth sine wave
-                            this.crossfader = Math.sin(currentTime * 0.001) * 0.5 + 0.5;
+                        case 0: // Very smooth sine wave
+                            this.crossfader = Math.sin(currentTime * 0.0005) * 0.5 + 0.5; // Half speed
                             break;
-                        case 1: // Rapid back-and-forth
-                            this.crossfader = Math.sin(currentTime * 0.005) * 0.5 + 0.5;
+                        case 1: // Slow back-and-forth
+                            this.crossfader = Math.sin(currentTime * 0.002) * 0.5 + 0.5; // Slower
                             break;
-                        case 2: // Sawtooth sweep
-                            this.crossfader = (currentTime * 0.0003) % 1.0;
+                        case 2: // Slow sawtooth sweep
+                            this.crossfader = (currentTime * 0.0001) % 1.0; // Much slower
                             break;
-                        case 3: // Square wave cuts
-                            this.crossfader = Math.sin(currentTime * 0.002) > 0 ? 0.9 : 0.1;
+                        case 3: // Slower square wave cuts
+                            this.crossfader = Math.sin(currentTime * 0.001) > 0 ? 0.8 : 0.2; // Slower, less extreme
                             break;
-                        case 4: // Random jumps
-                            if (Math.random() > 0.9) this.crossfader = Math.random();
+                        case 4: // Less frequent random jumps
+                            if (Math.random() > 0.95) this.crossfader = Math.random(); // Less frequent
                             break;
                     }
                     
@@ -1897,10 +1906,19 @@ class CLIFTEngine {
                 this.renderWaveMode(ctx, cellWidth, cellHeight, time);
                 break;
             case 'Plasma':
-                this.renderPlasmaMode(ctx, cellWidth, cellHeight, time);
+                this.renderMatrixMode(ctx, cellWidth, cellHeight, time);
                 break;
             case '3D ASCII':
                 this.render3DMode(ctx, cellWidth, cellHeight, time);
+                break;
+            case '3D City':
+                this.render3DCityMode(ctx, cellWidth, cellHeight, time);
+                break;
+            case 'Spline':
+                this.renderSplineMode(ctx, cellWidth, cellHeight, time);
+                break;
+            case 'Terminal':
+                this.renderTerminalOverlay(ctx, cellWidth, cellHeight, time);
                 break;
         }
     }
@@ -2121,43 +2139,145 @@ class CLIFTEngine {
     }
     
     renderParticleMode(ctx, cellWidth, cellHeight, time) {
-        // Update existing particles and create new ones
-        this.updateParticles(time);
+        // Optimized particle system with trails - fewer particles but with trails
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)'; // Slower fade for longer trails
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
-        // Create particles from ASCII data
+        // Initialize fast particles if needed
+        if (!this.fastParticles) {
+            this.fastParticles = [];
+        }
+        
+        // Create fewer new particles from ASCII scene but with trails
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
                 const char = this.outputBuffer[y][x];
-                if (char && char !== ' ' && Math.random() < 0.1) {
+                if (char && char !== ' ' && Math.random() < 0.15) { // Lower spawn rate for fewer particles
                     const intensity = this.getCharacterIntensity(char);
                     const color = this.outputColorBuffer[y][x];
-                    const { r, g, b } = this.parseColor(color);
                     
-                    // Create new particle
-                    if (this.particles.length < this.maxParticles) {
-                        this.particles.push({
-                            x: x * cellWidth + Math.random() * cellWidth,
-                            y: y * cellHeight + Math.random() * cellHeight,
-                            vx: (Math.random() - 0.5) * 4,
-                            vy: (Math.random() - 0.5) * 4,
-                            life: 1.0,
-                            maxLife: 1.0 + intensity,
-                            size: intensity * 3 + 1,
-                            r, g, b
-                        });
+                    // Parse color or use default
+                    let r = 0, g = 255, b = 0;
+                    if (color && color.fg) {
+                        try {
+                            const parsed = this.parseColor(color.fg);
+                            r = parsed.r || 0;
+                            g = parsed.g || 255;
+                            b = parsed.b || 0;
+                        } catch(e) {
+                            // Use default green
+                        }
                     }
+                    
+                    // Create particle with trail tracking
+                    this.fastParticles.push({
+                        x: x * cellWidth + Math.random() * cellWidth,
+                        y: y * cellHeight + Math.random() * cellHeight,
+                        // Faster velocities to maintain scene shape recognition
+                        vx: (Math.random() - 0.5) * 35,
+                        vy: (Math.random() - 0.5) * 35,
+                        life: 0.5 + Math.random() * 0.4, // Longer life for trails (0.5-0.9 seconds)
+                        maxLife: 0.5 + Math.random() * 0.4,
+                        size: 1 + intensity * 2,
+                        char: char,
+                        r, g, b,
+                        // Trail tracking
+                        trail: [], // Store previous positions
+                        trailLength: 8 + Math.floor(intensity * 6) // Trail length based on intensity
+                    });
                 }
             }
         }
         
-        // Render particles
-        this.particles.forEach(p => {
-            const alpha = p.life / p.maxLife;
+        // Update and render particles with trails
+        for (let i = this.fastParticles.length - 1; i >= 0; i--) {
+            const p = this.fastParticles[i];
+            
+            // Store current position in trail before updating
+            p.trail.push({ x: p.x, y: p.y });
+            if (p.trail.length > p.trailLength) {
+                p.trail.shift(); // Remove oldest trail point
+            }
+            
+            // Update position with fast movement
+            p.x += p.vx;
+            p.y += p.vy;
+            
+            // Add gravity and air resistance for more natural movement
+            p.vy += 0.4; // Slightly less gravity for longer airtime
+            p.vx *= 0.985; // Less air resistance for smoother trails
+            p.vy *= 0.985;
+            
+            // Decrease life to maintain scene shape but allow for trails
+            p.life -= 0.018; // Slightly slower decay for trail visibility
+            
+            // Remove dead particles or those off-screen
+            if (p.life <= 0 || p.x < -50 || p.x > ctx.canvas.width + 50 || 
+                p.y < -50 || p.y > ctx.canvas.height + 50) {
+                this.fastParticles.splice(i, 1);
+                continue;
+            }
+            
+            // Render trail first (behind particle)
+            if (p.trail.length > 1) {
+                ctx.lineWidth = 1;
+                ctx.lineCap = 'round';
+                
+                for (let t = 1; t < p.trail.length; t++) {
+                    const trailPoint = p.trail[t];
+                    const prevPoint = p.trail[t - 1];
+                    
+                    // Trail alpha decreases towards the tail
+                    const trailProgress = t / p.trail.length;
+                    const alpha = (p.life / p.maxLife) * trailProgress * 0.6;
+                    
+                    if (alpha > 0.05) {
+                        ctx.strokeStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha})`;
+                        ctx.beginPath();
+                        ctx.moveTo(prevPoint.x, prevPoint.y);
+                        ctx.lineTo(trailPoint.x, trailPoint.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            // Render main particle
+            const alpha = Math.min(1, p.life / p.maxLife);
+            const size = p.size * alpha;
+            
+            // Render as character with glow
+            ctx.font = `${size * 8}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Add glow effect for bright particles
+            if (alpha > 0.6) {
+                ctx.shadowColor = `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha})`;
+                ctx.shadowBlur = 4;
+            } else {
+                ctx.shadowBlur = 0;
+            }
+            
             ctx.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha})`;
+            ctx.fillText(p.char, p.x, p.y);
+            
+            // Also render as a small dot for extra density
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha * 0.7})`;
             ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, size * 0.6, 0, Math.PI * 2);
             ctx.fill();
-        });
+        }
+        
+        // Reset text alignment
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.shadowBlur = 0;
+        
+        // Keep particle count reasonable for performance (fewer particles due to trails)
+        if (this.fastParticles.length > 400) {
+            this.fastParticles.splice(0, this.fastParticles.length - 400);
+        }
     }
     
     renderLineMode(ctx, cellWidth, cellHeight, time) {
@@ -2461,5 +2581,555 @@ class CLIFTEngine {
         }
         
         return { r: 0, g: 255, b: 0 }; // Green fallback
+    }
+
+    // ====== NEW EXPERIMENTAL RENDER MODES ======
+
+    render3DCityMode(ctx, cellWidth, cellHeight, time) {
+        // Dark black background
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        // Much faster scrolling parameters
+        const scrollSpeed = time * 80; // Much faster movement
+        const cityWidth = cellWidth * 1.2; // Building width based on cell size
+        const groundLevel = ctx.canvas.height * 0.8; // Lower ground level
+        
+        // Create seamless scrolling by drawing multiple screen widths
+        const totalWidth = ctx.canvas.width + cityWidth * 2;
+        const startX = -(scrollSpeed % cityWidth);
+        
+        // First render the ASCII scene in the sky area for visibility
+        ctx.font = `${Math.min(cellWidth, cellHeight) * 0.6}px monospace`;
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = 'rgba(200, 200, 200, 0.8)'; // Light gray for contrast
+        
+        for (let y = 0; y < Math.min(this.height, Math.floor(groundLevel / cellHeight) - 2); y++) {
+            for (let x = 0; x < this.width; x++) {
+                const char = this.outputBuffer[y][x];
+                if (char && char !== ' ') {
+                    const screenX = x * cellWidth;
+                    const screenY = y * cellHeight;
+                    ctx.fillText(char, screenX, screenY);
+                }
+            }
+        }
+        
+        // Create buildings directly from ASCII scene data
+        for (let x = 0; x < ctx.canvas.width; x += cityWidth) {
+            // Map to buffer coordinates for building data
+            const bufferX = Math.floor((x + scrollSpeed) / cityWidth) % this.width;
+            
+            // Create building column from ASCII data
+            let columnData = [];
+            for (let y = 0; y < this.height; y++) {
+                const char = this.outputBuffer[y][bufferX];
+                if (char && char !== ' ') {
+                    columnData.push({
+                        char: char,
+                        intensity: this.getCharacterIntensity(char),
+                        y: y
+                    });
+                }
+            }
+            
+            // Sort by intensity for building hierarchy
+            columnData.sort((a, b) => b.intensity - a.intensity);
+            
+            // Create buildings from sorted data
+            let currentHeight = groundLevel;
+            for (let i = 0; i < Math.min(columnData.length, 5); i++) { // Max 5 buildings per column
+                const data = columnData[i];
+                const buildingHeight = data.intensity * 150 + 20; // Base height on character intensity
+                const buildingY = currentHeight - buildingHeight;
+                
+                // Building width varies by character type
+                let buildingWidth = cityWidth * 0.8;
+                if ('█▉▊▋▌▍▎▏▓▒░'.includes(data.char)) {
+                    buildingWidth = cityWidth * 1.0; // Wide buildings for block chars
+                } else if ('|!:;'.includes(data.char)) {
+                    buildingWidth = cityWidth * 0.4; // Narrow buildings for line chars
+                } else if ('*%#@&'.includes(data.char)) {
+                    buildingWidth = cityWidth * 0.6; // Medium buildings for complex chars
+                }
+                
+                // Only draw if building is visible
+                if (x > -cityWidth && x < ctx.canvas.width + cityWidth) {
+                    // Building silhouette in white/gray
+                    const brightness = Math.floor(100 + data.intensity * 155);
+                    ctx.fillStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
+                    ctx.fillRect(x, buildingY, buildingWidth, buildingHeight);
+                    
+                    // Add character detail on building
+                    ctx.fillStyle = '#000'; // Black text on white building
+                    ctx.font = `${Math.min(buildingWidth * 0.8, buildingHeight * 0.3)}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(data.char, x + buildingWidth/2, buildingY + buildingHeight/2);
+                    
+                    // Building outline for definition
+                    ctx.strokeStyle = '#666';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x, buildingY, buildingWidth, buildingHeight);
+                    
+                    // Windows for tall buildings
+                    if (buildingHeight > 60) {
+                        ctx.fillStyle = '#333';
+                        const floors = Math.floor(buildingHeight / 20);
+                        for (let floor = 1; floor < floors; floor++) {
+                            const windowY = buildingY + floor * 20;
+                            const windowWidth = Math.max(2, buildingWidth * 0.1);
+                            const windowSpacing = buildingWidth / 4;
+                            
+                            for (let w = 1; w <= 3; w++) {
+                                const windowX = x + w * windowSpacing - windowWidth/2;
+                                ctx.fillRect(windowX, windowY - 3, windowWidth, 6);
+                            }
+                        }
+                    }
+                }
+                
+                currentHeight = buildingY; // Stack buildings vertically
+                if (currentHeight < 50) break; // Don't go too high
+            }
+        }
+        
+        // Draw ground plane in dark gray
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, groundLevel, ctx.canvas.width, ctx.canvas.height - groundLevel);
+        
+        // Reset text alignment after building rendering
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+    }
+    
+    getBuildingType(char) {
+        // Map ASCII characters to building types
+        if ('█▉▊▋▌▍▎▏▓▒░'.includes(char)) return 'skyscraper';
+        if ('*%#@&'.includes(char)) return 'complex';
+        if ('~-_='.includes(char)) return 'warehouse';
+        if ('|!:;'.includes(char)) return 'tower';
+        if ('oO0c'.includes(char)) return 'dome';
+        if ('+xX'.includes(char)) return 'cross';
+        return 'basic';
+    }
+    
+    getBuildingColor(type) {
+        switch(type) {
+            case 'skyscraper': return { r: 80, g: 120, b: 200 };
+            case 'complex': return { r: 150, g: 100, b: 50 };
+            case 'warehouse': return { r: 100, g: 100, b: 100 };
+            case 'tower': return { r: 200, g: 150, b: 100 };
+            case 'dome': return { r: 120, g: 200, b: 120 };
+            case 'cross': return { r: 200, g: 200, b: 200 };
+            default: return { r: 60, g: 80, b: 120 };
+        }
+    }
+
+    renderSplineMode(ctx, cellWidth, cellHeight, time) {
+        // Network rendering - clean splines connecting ASCII characters as nodes
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        // Collect nodes from ASCII buffer
+        const nodes = [];
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                const char = this.outputBuffer[y][x];
+                if (!char || char === ' ') continue;
+                
+                const intensity = this.getCharacterIntensity(char);
+                nodes.push({
+                    x: x * cellWidth + cellWidth/2,
+                    y: y * cellHeight + cellHeight/2,
+                    intensity: intensity,
+                    char: char,
+                    id: y * this.width + x
+                });
+            }
+        }
+        
+        if (nodes.length < 2) return;
+        
+        // Faster spline connections - simplified logic
+        const connections = [];
+        const maxDistance = Math.min(cellWidth, cellHeight) * 6; // Smaller radius for performance
+        const maxConnections = 300; // More connections but simpler logic
+        const connectionPhase = Math.floor(time * 0.5) % 3; // Faster changes, fewer phases
+        
+        for (let i = 0; i < nodes.length && connections.length < maxConnections; i += 2) { // Skip every other node for performance
+            const nodeA = nodes[i];
+            
+            // Simplified connection logic - just find nearby nodes quickly
+            for (let j = i + 1; j < nodes.length && connections.length < maxConnections; j++) {
+                const nodeB = nodes[j];
+                const distance = Math.sqrt((nodeA.x - nodeB.x) ** 2 + (nodeA.y - nodeB.y) ** 2);
+                
+                if (distance < maxDistance) {
+                    // Simple connection criteria based on phase
+                    let shouldConnect = false;
+                    switch(connectionPhase) {
+                        case 0: // Close connections
+                            shouldConnect = distance < maxDistance * 0.6;
+                            break;
+                        case 1: // Medium connections
+                            shouldConnect = distance > maxDistance * 0.3 && distance < maxDistance * 0.8;
+                            break;
+                        case 2: // All valid connections
+                            shouldConnect = true;
+                            break;
+                    }
+                    
+                    if (shouldConnect) {
+                        const strength = (nodeA.intensity + nodeB.intensity) / 2 * (1 - distance / maxDistance);
+                        if (strength > 0.2) { // Lower threshold for more connections
+                            connections.push({
+                                from: nodeA,
+                                to: nodeB,
+                                strength: strength,
+                                distance: distance
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Draw connections as splines
+        connections.forEach(connection => {
+            const { from, to, strength } = connection;
+            
+            // Connection color based on strength and time
+            const hue = (strength * 240 + time * 30) % 360; // Blue to red spectrum
+            const alpha = strength * 0.8 + 0.2;
+            // More variation in line thickness based on strength and character types
+            const baseWidth = strength * 3 + 0.5;
+            const thicknessVariation = (from.intensity + to.intensity) / 2;
+            const lineWidth = baseWidth * (0.5 + thicknessVariation * 1.5);
+            
+            ctx.strokeStyle = `hsla(${hue}, 60%, 50%, ${alpha})`;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            
+            // Draw smooth curve between nodes
+            const midX = (from.x + to.x) / 2;
+            const midY = (from.y + to.y) / 2;
+            
+            // Add slight curve for more organic feel
+            const offset = Math.sin(time * 0.001 + from.id * 0.1) * 20;
+            const controlX = midX + offset;
+            const controlY = midY - offset;
+            
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.quadraticCurveTo(controlX, controlY, to.x, to.y);
+            ctx.stroke();
+            
+            // Animated data flow along connections
+            const flowPos = (time * 0.002 + connection.distance * 0.01) % 1;
+            const flowX = from.x + (to.x - from.x) * flowPos;
+            const flowY = from.y + (to.y - from.y) * flowPos;
+            
+            ctx.fillStyle = `hsla(${hue}, 80%, 70%, 0.8)`;
+            ctx.beginPath();
+            ctx.arc(flowX, flowY, 2, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        
+        // Draw network nodes
+        nodes.forEach(node => {
+            const size = 2 + node.intensity * 6;
+            const brightness = 40 + node.intensity * 60;
+            
+            // Node color based on intensity
+            const nodeColor = `rgb(${brightness}, ${brightness + 50}, ${brightness + 100})`;
+            
+            // Node glow
+            const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, size * 2);
+            gradient.addColorStop(0, nodeColor);
+            gradient.addColorStop(1, 'rgba(0, 100, 200, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, size * 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Core node
+            ctx.fillStyle = nodeColor;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        
+        // Add subtle grid background for network feel
+        ctx.strokeStyle = 'rgba(0, 50, 100, 0.1)';
+        ctx.lineWidth = 0.5;
+        const gridSpacing = 50;
+        
+        for (let x = 0; x < ctx.canvas.width; x += gridSpacing) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, ctx.canvas.height);
+            ctx.stroke();
+        }
+        
+        for (let y = 0; y < ctx.canvas.height; y += gridSpacing) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(ctx.canvas.width, y);
+            ctx.stroke();
+        }
+    }
+
+    renderTerminalOverlay(ctx, cellWidth, cellHeight, time) {
+        // First render the normal ASCII scene
+        this.renderASCII(ctx, cellWidth, cellHeight);
+        
+        // Then overlay terminal boot sequence as effect
+        const fontSize = 12; // Smaller overlay text
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textBaseline = 'top';
+        const lineHeight = fontSize + 2;
+        
+        // Extended boot messages
+        const bootMessages = [
+            '[ OK ] Started Update UTMP about System Runlevel Changes',
+            '[ OK ] Started Load/Save Random Seed', 
+            '[ OK ] Started Network Manager Wait Online',
+            '[ OK ] Reached target Network is Online',
+            '[ OK ] Started OpenSSH Daemon',
+            '[ OK ] Started D-Bus System Message Bus',
+            '[INFO] Loading kernel modules...',
+            '[INFO] Mounting filesystems...',
+            '[INFO] Starting system services...',
+            '[INFO] Loading ASCII VJ Engine...',
+            '[INFO] Initializing audio subsystem...',
+            '[INFO] Mounting visualization drivers...',
+            '[INFO] Loading scene database...',
+            '[INFO] Starting network interfaces...',
+            '[INFO] Configuring display adapters...',
+            '[ OK ] Started CLIFT ASCII VJ Service',
+            '[ OK ] Started Audio Reactive Engine',
+            '[ OK ] Started PostFX Pipeline',
+            '[INFO] Entering VJ mode...',
+            '[INFO] System ready for performance',
+            '[ OK ] All systems operational',
+            '[INFO] Monitoring performance metrics...',
+            '[INFO] Processing audio input...',
+            '[INFO] Rendering ASCII scenes...',
+            '[INFO] Applying visual effects...',
+            '[WARN] High CPU usage detected',
+            '[INFO] Optimizing frame rate...',
+            '[ OK ] Performance stabilized',
+            '[INFO] Scene transition initiated...',
+            '[INFO] Crossfader position changed',
+            '[INFO] Effect parameters updated...',
+            '[INFO] Beat detection active',
+            '[INFO] BPM: 120 detected',
+            '[INFO] Audio reactive mode enabled',
+            '[INFO] Full auto mode engaged',
+        ];
+        
+        // Fast scrolling boot sequence
+        const scrollSpeed = time * 2.5; // Much faster
+        const totalLines = Math.ceil(ctx.canvas.height / lineHeight) + 10;
+        
+        // Semi-transparent overlay background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        // Terminal scan lines covering full screen
+        for (let y = 0; y < ctx.canvas.height; y += 4) {
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.03)';
+            ctx.fillRect(0, y, ctx.canvas.width, 1);
+        }
+        
+        // Smooth infinite scrolling messages
+        for (let i = 0; i < totalLines; i++) {
+            // Smooth infinite loop without stuttering
+            const scrollOffset = scrollSpeed % bootMessages.length;
+            const messageIndex = Math.floor(scrollOffset + i * 0.3) % bootMessages.length;
+            const message = bootMessages[messageIndex];
+            
+            // Smooth vertical position calculation
+            const yPos = (i * lineHeight - (scrollSpeed * lineHeight * 0.5) % (totalLines * lineHeight));
+            
+            // Wrap around smoothly when reaching bottom
+            let displayY = yPos;
+            if (displayY > ctx.canvas.height) {
+                displayY = yPos - (totalLines * lineHeight);
+            }
+            
+            if (displayY > -lineHeight && displayY < ctx.canvas.height + lineHeight) {
+                // Different colors for different message types
+                let color = 'rgba(0, 200, 0, 0.8)'; // Semi-transparent
+                if (message.includes('[ OK ]')) color = 'rgba(0, 255, 0, 0.9)';
+                if (message.includes('[INFO]')) color = 'rgba(0, 150, 255, 0.8)';
+                if (message.includes('[WARN]')) color = 'rgba(255, 200, 0, 0.8)';
+                if (message.includes('[ERROR]')) color = 'rgba(255, 100, 100, 0.8)';
+                
+                // Distribute messages across screen width
+                const columnWidth = ctx.canvas.width / 3;
+                const column = i % 3;
+                const xPos = 10 + column * columnWidth;
+                
+                ctx.fillStyle = color;
+                ctx.fillText(message.substring(0, 40), xPos, displayY); // Truncate if too long
+                
+                // Add timestamp
+                const timestamp = String(Math.floor(scrollSpeed * 2 + i) / 10).padStart(6, '0');
+                ctx.fillStyle = 'rgba(100, 255, 100, 0.6)';
+                ctx.fillText(`[${timestamp}]`, ctx.canvas.width - 80, displayY);
+            }
+        }
+        
+        // Mix in actual ASCII scene data as system output
+        const overlayStartY = ctx.canvas.height * 0.75;
+        let overlayLine = 0;
+        
+        for (let y = 0; y < this.height && overlayLine < 4; y += 4) {
+            let line = '';
+            for (let x = 0; x < Math.min(this.width, 60); x++) {
+                const char = this.outputBuffer[y][x];
+                if (char && char !== ' ') {
+                    line += char;
+                }
+            }
+            
+            if (line.trim().length > 3) {
+                const lineY = overlayStartY + overlayLine * lineHeight;
+                if (lineY < ctx.canvas.height - 20) {
+                    // ASCII data as system debug output with transparency
+                    ctx.fillStyle = 'rgba(100, 200, 255, 0.7)';
+                    const addr = (y * this.width).toString(16).padStart(6, '0').toUpperCase();
+                    ctx.fillText(`[VJ_BUF] ${addr}: ${line.substring(0, 50)}`, 10, lineY);
+                    overlayLine++;
+                }
+            }
+        }
+        
+        // System status overlay at bottom
+        const statusBarY = ctx.canvas.height - 18;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(0, statusBarY, ctx.canvas.width, 18);
+        
+        // Status information
+        const loadAvg = (Math.sin(time * 0.02) + 1) * 50;
+        const memUsage = ((Math.sin(time * 0.01) + 1) * 30 + 40);
+        const fps = Math.floor(28 + Math.sin(time * 0.03) * 6);
+        
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
+        ctx.font = `10px monospace`;
+        ctx.fillText(`CLIFT VJ | Load: ${loadAvg.toFixed(1)}% | Mem: ${memUsage.toFixed(1)}% | FPS: ${fps} | Scene: ${this.decks[this.activeDeck].scene} | Mode: Terminal`, 5, statusBarY + 6);
+        
+        // Blinking cursor
+        const cursorTime = Math.floor(time * 3) % 2;
+        if (cursorTime) {
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+            ctx.fillRect(ctx.canvas.width - 10, statusBarY + 2, 6, 12);
+        }
+        
+        // Subtle border
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
+    
+    renderASCII(ctx, cellWidth, cellHeight) {
+        // Render the actual ASCII scene underneath
+        ctx.font = `${Math.min(cellWidth, cellHeight)}px monospace`;
+        ctx.textBaseline = 'top';
+        
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                const char = this.outputBuffer[y][x];
+                if (char && char !== ' ') {
+                    const screenX = x * cellWidth;
+                    const screenY = y * cellHeight;
+                    
+                    // Use regular ASCII rendering colors
+                    const colorData = this.outputColorBuffer[y][x];
+                    let fillStyle = '#0f0'; // Default green
+                    
+                    if (colorData && colorData.fg) {
+                        fillStyle = colorData.fg;
+                    }
+                    
+                    ctx.fillStyle = fillStyle;
+                    ctx.fillText(char, screenX, screenY);
+                }
+            }
+        }
+    }
+
+    renderMatrixMode(ctx, cellWidth, cellHeight, time) {
+        // Lightweight datamoshing effect using simple canvas operations
+        
+        // First render the ASCII scene normally
+        this.renderASCII(ctx, cellWidth, cellHeight);
+        
+        // Simple glitch effects based on scene content - much lighter on CPU
+        const glitchPhase = Math.floor(time * 0.005) % 10; // Less frequent updates
+        
+        if (glitchPhase < 2) { // Only glitch 20% of the time
+            // Horizontal displacement based on ASCII content
+            for (let y = 0; y < this.height; y++) {
+                let hasContent = false;
+                let totalIntensity = 0;
+                
+                for (let x = 0; x < this.width; x++) {
+                    const char = this.outputBuffer[y][x];
+                    if (char && char !== ' ') {
+                        hasContent = true;
+                        totalIntensity += this.getCharacterIntensity(char);
+                    }
+                }
+                
+                if (hasContent) {
+                    const avgIntensity = totalIntensity / this.width;
+                    const displacement = Math.floor(Math.sin(time * 0.01 + y * 0.1) * avgIntensity * 15);
+                    
+                    if (Math.abs(displacement) > 2) {
+                        const screenY = y * cellHeight;
+                        const rowHeight = cellHeight;
+                        
+                        // Simple pixel shift using canvas operations
+                        const imageData = ctx.getImageData(0, screenY, ctx.canvas.width, rowHeight);
+                        ctx.clearRect(0, screenY, ctx.canvas.width, rowHeight);
+                        ctx.putImageData(imageData, displacement, screenY);
+                    }
+                }
+            }
+        }
+        
+        // Add simple RGB shift for high-intensity areas
+        if (glitchPhase === 3) {
+            ctx.globalCompositeOperation = 'screen';
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+            ctx.fillRect(2, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+            ctx.fillRect(-1, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.fillStyle = 'rgba(0, 0, 255, 0.1)';
+            ctx.fillRect(1, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.globalCompositeOperation = 'source-over';
+        }
+    }
+    
+    calculateSceneActivity() {
+        // Calculate how much activity is in the current scene
+        let activity = 0;
+        let totalChars = 0;
+        
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                const char = this.outputBuffer[y][x];
+                if (char && char !== ' ') {
+                    activity += this.getCharacterIntensity(char);
+                    totalChars++;
+                }
+            }
+        }
+        
+        return totalChars > 0 ? activity / totalChars : 0;
     }
 }

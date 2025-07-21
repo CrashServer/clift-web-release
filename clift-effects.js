@@ -37,11 +37,11 @@ CLIFTEffects.Rotate = function(buffer, width, height, params) {
         temp[y] = buffer[y].slice();
     }
     
-    // Simple rotation (may distort on non-square canvas)
+    // Simple rotation - 90 degrees clockwise without vertical flip
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            const srcX = Math.floor((y / height) * width);
-            const srcY = Math.floor((1 - x / width) * height);
+            const srcX = Math.floor((height - 1 - y) / height * width);
+            const srcY = Math.floor(x / width * height);
             
             if (srcY >= 0 && srcY < height && srcX >= 0 && srcX < width) {
                 buffer[y][x] = temp[srcY][srcX];

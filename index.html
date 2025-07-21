@@ -617,7 +617,8 @@
                 <label><input type="checkbox" id="auto-crossfade" checked> Crossfade</label><br>
                 <label><input type="checkbox" id="auto-postfx" checked> PostFX</label><br>
                 <label><input type="checkbox" id="auto-experimental" checked> Experimental</label><br>
-                <label><input type="checkbox" id="auto-colors" checked> Colors</label>
+                <label><input type="checkbox" id="auto-colors" checked> Colors</label><br>
+                <label><input type="checkbox" id="auto-resolution" checked> Resolution</label>
             </div>
             <div style="font-size: 9px; margin: 2px 0;">
                 <label>Subdivision: 
@@ -647,7 +648,14 @@
             <button class="small" id="res-preset">Preset</button>
         </div>
         
-        <!-- BPM AND FPS REMOVED -->
+        <div class="control-group">
+            <strong>BPM SYNC</strong><br>
+            <button id="tap-bpm" style="width: 100%; margin-bottom: 2px;">TAP BPM</button>
+            <div style="font-size: 10px; color: #0f0; text-align: center;">
+                <span id="bpm-display">120</span> BPM
+            </div>
+            <input type="range" id="bpm-slider" min="60" max="200" step="1" value="120" style="width: 100%; margin-top: 2px;">
+        </div>
         
         <div class="control-group">
             <strong>MODES</strong><br>
@@ -744,6 +752,7 @@
     <script src="clift-scenes-final.js"></script>
     <script src="human-animation-scenes.js"></script>
     <script src="giger-cyberpunk-scenes.js"></script>
+    <script src="explosion-scenes.js"></script>
     <script src="clift-effects.js"></script>
     <script src="clift-3d-effects.js"></script>
     <script src="clift-shader-effects.js"></script>
@@ -860,7 +869,11 @@
             autoPostfx: document.getElementById('auto-postfx'),
             autoExperimental: document.getElementById('auto-experimental'),
             autoColors: document.getElementById('auto-colors'),
+            autoResolution: document.getElementById('auto-resolution'),
             autoSubdivision: document.getElementById('auto-subdivision'),
+            tapBpm: document.getElementById('tap-bpm'),
+            bpmDisplay: document.getElementById('bpm-display'),
+            bpmSlider: document.getElementById('bpm-slider'),
             surfaceToggle: document.getElementById('surface-toggle'),
             surfaceStatus: document.getElementById('surface-status'),
             sceneButtons: document.querySelectorAll('.scene-btn'),
@@ -1226,6 +1239,50 @@
             };
         }
         
+        // BPM controls
+        let tapTimes = [];
+        if (elements.tapBpm) {
+            elements.tapBpm.onclick = () => {
+                const now = performance.now();
+                tapTimes.push(now);
+                
+                // Keep only last 8 taps for averaging
+                if (tapTimes.length > 8) {
+                    tapTimes.shift();
+                }
+                
+                if (tapTimes.length >= 2) {
+                    // Calculate average interval between taps
+                    const intervals = [];
+                    for (let i = 1; i < tapTimes.length; i++) {
+                        intervals.push(tapTimes[i] - tapTimes[i-1]);
+                    }
+                    const avgInterval = intervals.reduce((a, b) => a + b) / intervals.length;
+                    const bpm = Math.round(60000 / avgInterval);
+                    
+                    if (bpm >= 60 && bpm <= 200) {
+                        clift.bpm = bpm;
+                        elements.bpmDisplay.textContent = bpm;
+                        elements.bpmSlider.value = bpm;
+                    }
+                }
+                
+                // Clear old taps after 5 seconds
+                setTimeout(() => {
+                    const cutoff = performance.now() - 5000;
+                    tapTimes = tapTimes.filter(time => time > cutoff);
+                }, 5000);
+            };
+        }
+        
+        if (elements.bpmSlider) {
+            elements.bpmSlider.oninput = () => {
+                clift.bpm = parseInt(elements.bpmSlider.value);
+                elements.bpmDisplay.textContent = clift.bpm;
+                tapTimes = []; // Clear tap history when manually adjusting
+            };
+        }
+        
         // Mode controls
         if (elements.pauseToggle) {
             elements.pauseToggle.onclick = () => {
@@ -1465,12 +1522,12 @@ CLIFT Web - ASCII VJ Software Help
 • Speed controls - Adjust BPM for automation timing
 
 ⌨️ KEYBOARD SHORTCUTS:
-Basic: H = Help, E = Editor, Space = Pause, F = Fullscreen, A = Audio, C = Color
+Basic: H = Help, E = Editor, U = Toggle UI, Space = Pause, F = Fullscreen, A = Audio, C = Color
 Navigation: Arrow Keys, 0-9 = Direct scene, Tab = Switch deck, Esc = Stop auto
 Crossfader: X = Toggle, Z = Deck A, V = Deck B, B = Center, -/+ = Fine adjust
 Effects: P = PostFX, G = Glow, S = Style, D = Preset, L/; = Effect, [/] = Glow intensity
 Colors: I = Invert, N = Primary, J = Secondary, K = Gradient
-Performance: R = Record, M = Auto, Q/W = Resolution, Y/U = FPS, T/O = BPM
+Performance: R = Record, M = Auto, Q/W = Resolution, Y = FPS, T/O = BPM
 Presets: F1 = Save, F2 = Load, F3 = Delete
 
 💾 SESSION:
@@ -1580,11 +1637,7 @@ Note: Click on the page first if shortcuts don't work.
         
         if (elements.unifiedEditorBtn) {
             elements.unifiedEditorBtn.onclick = () => {
-                if (window.CLIFTSceneEditor && window.CLIFTSceneEditor.toggle) {
-                    window.CLIFTSceneEditor.toggle();
-                } else {
-                    alert('Scene Editor not available in this version');
-                }
+                alert('Scene Editor not available in this version');
             };
         }
         
@@ -1705,7 +1758,7 @@ Note: Click on the page first if shortcuts don't work.
                     
                     // Update button and status text
                     const isExperimental = clift.currentRenderMode !== 0;
-                    elements.surfaceToggle.textContent = isExperimental ? `${result.mode} (${result.index}/8)` : 'Experimental';
+                    elements.surfaceToggle.textContent = isExperimental ? `${result.mode} (${result.index}/11)` : 'Experimental';
                     elements.surfaceToggle.style.background = isExperimental ? '#0f0' : '#222';
                     elements.surfaceToggle.style.color = isExperimental ? '#000' : '#0f0';
                     elements.surfaceStatus.textContent = isExperimental ? `${result.mode} Rendering` : 'ASCII Rendering';
@@ -2147,8 +2200,8 @@ Note: Click on the page first if shortcuts don't work.
             19: 'Creative Mix',
             20: 'Human Animation',
             21: 'Giger Cyberpunk',
-            22: 'Fractal Mathematics',
-            23: 'Retro Computing',
+            22: 'Advanced Cyberpunk',
+            23: 'Explosion Effects',
             24: 'Music Visualization',
             25: 'Generative Art Pro'
         };
@@ -2519,14 +2572,319 @@ Note: Click on the page first if shortcuts don't work.
         // Start loading sequence
         updateLoadingText();
         
+        // Keyboard shortcut to hide/show UI
+        document.addEventListener('keydown', function(event) {
+            // Only respond if not typing in an input field
+            if (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA') {
+                if (event.key === 'u' || event.key === 'U') {
+                    // Toggle control panel visibility
+                    const controlPanel = document.getElementById('controls');
+                    if (controlPanel) {
+                        if (controlPanel.style.display === 'none') {
+                            controlPanel.style.display = 'block';
+                        } else {
+                            controlPanel.style.display = 'none';
+                        }
+                    }
+                    event.preventDefault();
+                } else if (event.key === 'f' || event.key === 'F') {
+                    // Toggle fullscreen
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(err => {
+                            console.log('Fullscreen failed:', err);
+                        });
+                    } else {
+                        document.exitFullscreen().catch(err => {
+                            console.log('Exit fullscreen failed:', err);
+                        });
+                    }
+                    event.preventDefault();
+                } else if (event.key === 'x' || event.key === 'X') {
+                    // Cycle crossfader through three positions: A (0.0) -> Mix (0.5) -> B (1.0) -> A
+                    if (window.clift) {
+                        const current = window.clift.crossfader;
+                        let newPosition;
+                        let activeDeck;
+                        
+                        // Determine next position based on current position
+                        if (current < 0.25) {
+                            // Currently at A, go to Mix
+                            newPosition = 0.5;
+                            activeDeck = window.clift.activeDeck; // Keep current active deck
+                        } else if (current >= 0.25 && current < 0.75) {
+                            // Currently at Mix, go to B
+                            newPosition = 1.0;
+                            activeDeck = 1;
+                        } else {
+                            // Currently at B, go to A
+                            newPosition = 0.0;
+                            activeDeck = 0;
+                        }
+                        
+                        // Update crossfader position
+                        window.clift.crossfader = newPosition;
+                        
+                        // Switch active deck if moving to A or B
+                        if (newPosition === 0.0 || newPosition === 1.0) {
+                            window.clift.switchToDeck(activeDeck);
+                        }
+                        
+                        // Update crossfader slider
+                        const crossfaderSlider = document.getElementById('crossfader');
+                        if (crossfaderSlider) {
+                            crossfaderSlider.value = window.clift.crossfader * 100;
+                        }
+                        
+                        // Update deck buttons visual state
+                        const deckABtn = document.getElementById('deck-a-btn');
+                        const deckBBtn = document.getElementById('deck-b-btn');
+                        if (deckABtn && deckBBtn) {
+                            deckABtn.classList.toggle('active', activeDeck === 0);
+                            deckBBtn.classList.toggle('active', activeDeck === 1);
+                        }
+                        
+                        const positionName = newPosition === 0.0 ? 'A' : newPosition === 0.5 ? 'Mix' : 'B';
+                        console.log('Crossfader:', positionName, `(${newPosition})`);
+                    }
+                    event.preventDefault();
+                } else if (event.key >= '0' && event.key <= '9' && !event.ctrlKey && !event.altKey) {
+                    // Number keys 0-9 for scene selection within current category
+                    if (window.clift) {
+                        const sceneNum = parseInt(event.key);
+                        const deck = window.clift.decks[window.clift.activeDeck];
+                        deck.scene = sceneNum;
+                        
+                        // Update scene display
+                        const sceneDisplay = document.getElementById(`scene-display-${window.clift.activeDeck === 0 ? 'a' : 'b'}`);
+                        if (sceneDisplay) {
+                            sceneDisplay.textContent = `${deck.category}-${deck.scene}`;
+                        }
+                        
+                        console.log(`Scene changed to ${deck.category}-${deck.scene}`);
+                    }
+                    event.preventDefault();
+                } else if (event.ctrlKey) {
+                    // Ctrl + arrow keys for category navigation
+                    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                        if (window.clift) {
+                            const deck = window.clift.decks[window.clift.activeDeck];
+                            const currentCategory = deck.category;
+                            
+                            if (event.key === 'ArrowUp') {
+                                // Previous category
+                                deck.category = currentCategory > 0 ? currentCategory - 1 : 24;
+                            } else {
+                                // Next category
+                                deck.category = currentCategory < 24 ? currentCategory + 1 : 0;
+                            }
+                            
+                            // Update scene display
+                            const sceneDisplay = document.getElementById(`scene-display-${window.clift.activeDeck === 0 ? 'a' : 'b'}`);
+                            if (sceneDisplay) {
+                                sceneDisplay.textContent = `${deck.category}-${deck.scene}`;
+                            }
+                            
+                            console.log(`Category changed to ${deck.category}`);
+                        }
+                        event.preventDefault();
+                    }
+                } else if ((event.key === 'l' || event.key === 'L') && !event.ctrlKey) {
+                    // L key - Previous effect / Shift+L = Disable effect
+                    if (window.clift) {
+                        if (event.shiftKey) {
+                            window.clift.currentEffect = 0; // Set to None
+                        } else {
+                            const current = window.clift.currentEffect;
+                            window.clift.currentEffect = current > 0 ? current - 1 : window.clift.effects.length - 1;
+                        }
+                        console.log(`Effect: ${window.clift.effects[window.clift.currentEffect]}`);
+                    }
+                    event.preventDefault();
+                } else if (event.key === ';' && !event.ctrlKey) {
+                    // Semicolon key - Next effect
+                    if (window.clift) {
+                        const current = window.clift.currentEffect;
+                        window.clift.currentEffect = (current + 1) % window.clift.effects.length;
+                        console.log(`Effect: ${window.clift.effects[window.clift.currentEffect]}`);
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'k' || event.key === 'K') && !event.ctrlKey) {
+                    // K key - Cycle gradient types
+                    if (window.clift) {
+                        const deck = window.clift.decks[window.clift.activeDeck];
+                        if (event.shiftKey) {
+                            deck.gradientType = 0; // Reset to LINEAR_H
+                        } else {
+                            deck.gradientType = (deck.gradientType + 1) % 10; // 10 gradient types
+                        }
+                        const gradientNames = ['Lin-H', 'Lin-V', 'Diag1', 'Diag2', 'Radial', 'Diamond', 'Wave-H', 'Wave-V', 'Noise', 'Spiral'];
+                        console.log(`Gradient: ${gradientNames[deck.gradientType]}`);
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'p' || event.key === 'P') && !event.ctrlKey) {
+                    // P key - Toggle PostFX
+                    if (window.CLIFTPostFX) {
+                        const enabled = window.CLIFTPostFX.toggle();
+                        console.log(`PostFX: ${enabled ? 'ON' : 'OFF'}`);
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'g' || event.key === 'G') && !event.ctrlKey) {
+                    // G key - Toggle glow
+                    if (window.CLIFTPostFX) {
+                        window.CLIFTPostFX.options.glowEnabled = !window.CLIFTPostFX.options.glowEnabled;
+                        console.log(`Glow: ${window.CLIFTPostFX.options.glowEnabled ? 'ON' : 'OFF'}`);
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 's' || event.key === 'S') && !event.ctrlKey) {
+                    // S key - Cycle PostFX styles
+                    if (window.CLIFTPostFX) {
+                        const styles = ['green', 'amber', 'blue', 'white', 'cyan', 'red'];
+                        const currentIndex = styles.indexOf(window.CLIFTPostFX.options.crtStyle);
+                        const nextIndex = (currentIndex + 1) % styles.length;
+                        window.CLIFTPostFX.setStyle(styles[nextIndex]);
+                        console.log(`PostFX Style: ${styles[nextIndex]}`);
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'd' || event.key === 'D') && !event.ctrlKey) {
+                    // D key - Cycle PostFX presets
+                    if (window.CLIFTPostFX) {
+                        const presets = ['minimal', 'retro', 'heavy', 'cyberpunk'];
+                        // We'll cycle through presets
+                        if (!window.postfxPresetIndex) window.postfxPresetIndex = 0;
+                        window.postfxPresetIndex = (window.postfxPresetIndex + 1) % presets.length;
+                        window.CLIFTPostFX.applyPreset(presets[window.postfxPresetIndex]);
+                        console.log(`PostFX Preset: ${presets[window.postfxPresetIndex]}`);
+                    }
+                    event.preventDefault();
+                } else if (event.key === '-' && !event.ctrlKey) {
+                    // - key - Decrease glow intensity
+                    if (window.CLIFTPostFX) {
+                        window.CLIFTPostFX.options.glowIntensity = Math.max(0, window.CLIFTPostFX.options.glowIntensity - 0.5);
+                        console.log(`Glow Intensity: ${window.CLIFTPostFX.options.glowIntensity}`);
+                    }
+                    event.preventDefault();
+                } else if (event.key === '=' && !event.ctrlKey) {
+                    // = key - Increase glow intensity
+                    if (window.CLIFTPostFX) {
+                        window.CLIFTPostFX.options.glowIntensity = Math.min(5, window.CLIFTPostFX.options.glowIntensity + 0.5);
+                        console.log(`Glow Intensity: ${window.CLIFTPostFX.options.glowIntensity}`);
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'z' || event.key === 'Z') && !event.ctrlKey) {
+                    // Z key - Switch to Deck A
+                    if (window.clift) {
+                        window.clift.switchToDeck(0);
+                        window.clift.crossfader = 0.0;
+                        
+                        // Update crossfader slider
+                        const crossfaderSlider = document.getElementById('crossfader');
+                        if (crossfaderSlider) {
+                            crossfaderSlider.value = 0;
+                        }
+                        
+                        // Update deck buttons
+                        const deckABtn = document.getElementById('deck-a-btn');
+                        const deckBBtn = document.getElementById('deck-b-btn');
+                        if (deckABtn && deckBBtn) {
+                            deckABtn.classList.add('active');
+                            deckBBtn.classList.remove('active');
+                        }
+                        
+                        console.log('Switched to Deck A');
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'v' || event.key === 'V') && !event.ctrlKey) {
+                    // V key - Switch to Deck B
+                    if (window.clift) {
+                        window.clift.switchToDeck(1);
+                        window.clift.crossfader = 1.0;
+                        
+                        // Update crossfader slider
+                        const crossfaderSlider = document.getElementById('crossfader');
+                        if (crossfaderSlider) {
+                            crossfaderSlider.value = 100;
+                        }
+                        
+                        // Update deck buttons
+                        const deckABtn = document.getElementById('deck-a-btn');
+                        const deckBBtn = document.getElementById('deck-b-btn');
+                        if (deckABtn && deckBBtn) {
+                            deckABtn.classList.remove('active');
+                            deckBBtn.classList.add('active');
+                        }
+                        
+                        console.log('Switched to Deck B');
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'b' || event.key === 'B') && !event.ctrlKey) {
+                    // B key - Center crossfader (Mix position)
+                    if (window.clift) {
+                        window.clift.crossfader = 0.5;
+                        
+                        // Update crossfader slider
+                        const crossfaderSlider = document.getElementById('crossfader');
+                        if (crossfaderSlider) {
+                            crossfaderSlider.value = 50;
+                        }
+                        
+                        console.log('Crossfader centered (Mix position)');
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'r' || event.key === 'R') && !event.ctrlKey) {
+                    // R key - Cycle render modes / Shift+R = Reset to ASCII
+                    if (window.clift) {
+                        const deck = window.clift.decks[window.clift.activeDeck];
+                        if (event.shiftKey) {
+                            deck.renderMode = 0; // Reset to ASCII
+                            window.clift.currentRenderMode = 0;
+                        } else {
+                            window.clift.toggleRenderMode();
+                        }
+                        console.log(`Render Mode: ${window.clift.renderModes[deck.renderMode]}`);
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'n' || event.key === 'N') && !event.ctrlKey) {
+                    // N key - Next primary color
+                    if (window.clift) {
+                        window.clift.nextPrimaryColor();
+                        const deck = window.clift.decks[window.clift.activeDeck];
+                        const colorNames = ['', 'Red', 'Grn', 'Blu', 'Yel', 'Mag', 'Cyn', 'Wht', 'InvR', 'InvG', 'InvB'];
+                        console.log(`Primary Color: ${colorNames[deck.primaryColor]}`);
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'j' || event.key === 'J') && !event.ctrlKey) {
+                    // J key - Next secondary color
+                    if (window.clift) {
+                        window.clift.nextSecondaryColor();
+                        const deck = window.clift.decks[window.clift.activeDeck];
+                        const colorNames = ['', 'Red', 'Grn', 'Blu', 'Yel', 'Mag', 'Cyn', 'Wht', 'InvR', 'InvG', 'InvB'];
+                        console.log(`Secondary Color: ${colorNames[deck.secondaryColor]}`);
+                    }
+                    event.preventDefault();
+                } else if ((event.key === 'i' || event.key === 'I') && !event.ctrlKey) {
+                    // I key - Toggle color inversion (sync both engine and PostFX)
+                    if (window.clift && window.CLIFTPostFX) {
+                        // Toggle engine inversion
+                        window.clift.invertColors = !window.clift.invertColors;
+                        
+                        // Sync PostFX to match engine
+                        window.CLIFTPostFX.setInvertColors(window.clift.invertColors);
+                        
+                        console.log(`Color Inversion: ${window.clift.invertColors ? 'ON' : 'OFF'} (synced)`);
+                    }
+                    event.preventDefault();
+                }
+            }
+        });
+        
         console.log('CLIFT Web fully initialized with transition system');
         console.log('=== KEYBOARD SHORTCUTS ===');
-        console.log('Basic: H=Help, E=Editor, Space=Pause, F=Fullscreen, A=Audio, C=Color');
+        console.log('Basic: U=Toggle UI, E=Editor, Space=Pause, F=Fullscreen, A=Audio, C=Color');
         console.log('Crossfader: X=Toggle, Z=Deck A, V=Deck B, B=Center, -/+=Fine adjust');
         console.log('Navigation: Arrow keys, 0-9=Direct scene, Tab=Switch deck, Esc=Stop auto');
         console.log('Effects: P=PostFX, G=Glow, S=Style, D=Preset, L/;=Effect, [/]=Glow intensity');
         console.log('Colors: I=Invert, N=Primary, J=Secondary, K=Gradient');
-        console.log('Performance: R=Record, M=Auto, Q/W=Resolution, Y/U=FPS, T/O=BPM');
+        console.log('Performance: R=Record, M=Auto, Q/W=Resolution, Y=FPS, T/O=BPM');
         console.log('Presets: F1=Save, F2=Load, F3=Delete');
         console.log('Transitions: Click TRIGGER button or enable Auto Beat mode');
     </script>

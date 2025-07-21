@@ -112,7 +112,7 @@ window.CLIFTShaderEffects = {
     
     // Convert character to intensity value (0-1)
     charToIntensity: function(char) {
-        if (char === ' ') return 0;
+        if (!char || char === ' ') return 0;
         
         // ASCII value mapping
         const ascii = char.charCodeAt(0);
@@ -246,6 +246,7 @@ window.CLIFTShaderEffects = {
                     for (let i = 0; i < numFrames; i++) {
                         const frameIndex = CLIFTShaderEffects.motionBlurHistory.length - 1 - i;
                         const frame = CLIFTShaderEffects.motionBlurHistory[frameIndex];
+                        if (!frame || !frame[y]) continue; // Safety check for frame and row
                         const char = frame[y][x];
                         const frameIntensity = CLIFTShaderEffects.charToIntensity(char);
                         
