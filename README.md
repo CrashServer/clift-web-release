@@ -188,7 +188,7 @@ We welcome contributions! Please:
 
 ## 📜 License
 
-**MIT License** - See LICENSE file for details
+**MIT License** - See LICENSE file for details.
 
 ---
 
