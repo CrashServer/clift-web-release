@@ -16,7 +16,7 @@
 **Browser-based ASCII Art VJ Software**
 
 *A project by [crashserver.fr](https://crashserver.fr)*
-
+* TRY IT LIVE [HERE](https://crashserver.fr/apps/clift-web/)*
 ---
 
 ## STATUS: ALPHA 
