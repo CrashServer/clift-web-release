@@ -26,8 +26,7 @@ https://github.com/CrashServer/clift_terminal
 
 
 ⚠️ **This software is in active development.** 
-Expect breaking changes, experimental features, and a lot of digital glitch. 
-More features are coming! Probably breaking the software. It usually works but expect strange behaviors when playing a lot with post-fx. transitions are not perfect atm either. There is a full mode which is pretty cool. 
+Code is messed up. I might correct and make it usable. emphasis on might. 
 ---
 
 If you want to support : https://coff.ee/crashserver
