@@ -76,6 +76,12 @@
             <p class="hint">Params change speed / density on scenes that support them.</p>
         </details>
 
+        <details class="section" open data-section="snapshots">
+            <summary>Snapshots</summary>
+            <div class="snaps" id="snapshot-slots"></div>
+            <p class="hint">Click recalls · Shift+click saves · right-click clears · Shift+1…8 recall</p>
+        </details>
+
         <details class="section" open data-section="fx">
             <summary>Effects</summary>
             <div class="row">
@@ -95,6 +101,17 @@
                 <button class="toggle grow" id="color-toggle">Color</button>
                 <button class="toggle grow" id="invert-toggle">FG/BG invert</button>
             </div>
+        </details>
+
+        <details class="section" data-section="text">
+            <summary>Text overlay <span class="sum-state" id="text-state">off</span></summary>
+            <input type="text" id="text-input" class="full" maxlength="200" placeholder="Message… (Enter shows it)" spellcheck="false">
+            <div class="row">
+                <button class="toggle grow" id="text-toggle" title="Text overlay (L)">Show</button>
+                <select id="text-mode" title="Style"></select>
+                <select id="text-color" title="Color"></select>
+            </div>
+            <div class="checks"><label><input type="checkbox" id="text-pulse"> Pulse on beat</label></div>
         </details>
 
         <details class="section" data-section="postfx">
@@ -154,8 +171,21 @@
             <div class="checks" id="auto-options"></div>
         </details>
 
-        <details class="section" data-section="output">
+        <details class="section" data-section="midi">
+            <summary>MIDI <span class="sum-state" id="midi-state">off</span></summary>
+            <div class="row">
+                <button class="grow" id="midi-enable">Enable MIDI</button>
+                <button class="grow" id="midi-map-btn">Mapping…</button>
+            </div>
+            <p class="hint" id="midi-info">Connect a controller, enable, then map controls with Learn.</p>
+            <div class="checks"><label><input type="checkbox" id="midi-clock"> Follow MIDI clock tempo</label></div>
+        </details>
+
+        <details class="section" open data-section="output">
             <summary>Output</summary>
+            <div class="row">
+                <button class="toggle grow" id="output-window-btn" title="Projector window (Shift+F)">Projector window</button>
+            </div>
             <div class="row">
                 <label class="field-label">Grid</label>
                 <select id="res-select" class="grow"></select>
@@ -244,6 +274,17 @@
         </div>
     </dialog>
 
+    <!-- MIDI mapping -->
+    <dialog class="modal" id="midi-modal">
+        <div class="modal-head"><h2>MIDI mapping</h2><button class="icon-btn" data-close>✕</button></div>
+        <div class="modal-body">
+            <p class="hint">Click <b>Learn</b>, then move a knob / fader or hit a pad. Knobs and faders suit the
+                continuous targets; pads and buttons suit the triggers.</p>
+            <div class="midi-table" id="midi-table"></div>
+            <div class="row"><span class="dim grow" id="midi-last">No MIDI message yet</span><button id="midi-clear">Clear all</button></div>
+        </div>
+    </dialog>
+
     <!-- About -->
     <dialog class="modal" id="about-modal">
         <div class="modal-head"><h2>About CLIFT Web</h2><button class="icon-btn" data-close>✕</button></div>
@@ -302,9 +343,13 @@
     <script src="js/core/engine.js"></script>
     <script src="js/core/automation.js"></script>
     <script src="js/core/session.js"></script>
+    <script src="js/core/text-overlay.js"></script>
+    <script src="js/core/snapshots.js"></script>
 
     <script src="js/io/recorder.js"></script>
     <script src="js/io/websocket.js"></script>
+    <script src="js/io/midi.js"></script>
+    <script src="js/io/output-window.js"></script>
 
     <script src="js/editors/scene-editor.js"></script>
     <script src="js/editors/node-editor.js"></script>

@@ -4,8 +4,8 @@
 // from a glyph atlas - one quad per frame instead of thousands of fillText
 // calls - optionally into a framebuffer that the post-FX shader then reads.
 // Experimental render modes are 2D canvases; they are uploaded as a texture
-// only when post-FX, recording or the output window need it, otherwise the
-// canvas is shown directly.
+// only when post-FX or recording need it, otherwise the canvas is shown (and
+// mirrored to the output window) directly.
 //
 // Canvas path (no WebGL, or software WebGL where uploads are slow): the engine
 // draws ASCII with canvas 2D and that canvas is shown directly.
@@ -415,10 +415,10 @@
 
         // A 2D source canvas (canvas-path ASCII or an experimental render mode).
         renderCanvas(source) {
-            const needsOutput = (this.options.enabled && this.gl) || CLIFT.recorder.recording ||
-                (CLIFT.outputWindow && CLIFT.outputWindow.isOpen);
+            const needsOutput = (this.options.enabled && this.gl) || CLIFT.recorder.recording;
             if (!needsOutput) {
                 this.show(source);
+                this.present();
                 return;
             }
             if (this.gl) {

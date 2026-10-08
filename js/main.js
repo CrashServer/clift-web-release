@@ -21,6 +21,7 @@
         CLIFT.automation.init(engine);
         CLIFT.session.init(engine);
         CLIFT.ws.init(engine);
+        CLIFT.outputWindow.init();
 
         step(80, 'RESTORING SESSION...');
         const restored = CLIFT.session.restoreAutosave();

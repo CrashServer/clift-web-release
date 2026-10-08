@@ -41,6 +41,9 @@
             this.bindMixer();
             this.bindDialogs();
             this.bindDragDrop();
+            this.bindSnapshots();
+            this.bindText();
+            this.bindMidi();
 
             // Mouse-clicked buttons keep focus, so a later Space/Enter would
             // "click" them again on top of the shortcut. Drop focus after clicks.
@@ -55,6 +58,8 @@
             CLIFT.events.on('frame', () => this.onFrame());
             CLIFT.events.on('audio-source', () => this.syncAudio());
             CLIFT.events.on('ws-status', (s) => this.syncWs(s));
+            CLIFT.events.on('midi', () => this.syncMidi());
+            CLIFT.events.on('midi-activity', () => this.midiActivity());
             CLIFT.events.on('scene-error', ({ id }) => {
                 this.toast(`Scene ${id} "${CLIFT.catalog.name(id)}" crashed and was skipped`, 'error');
                 this.listKey = '';
@@ -72,6 +77,7 @@
             this.syncCrossfader(engine.crossfader);
             this.syncAudio();
             this.syncWs(CLIFT.ws.status);
+            this.syncMidi();
         },
 
         // ---- helpers --------------------------------------------------------------
@@ -99,6 +105,15 @@
                 document.documentElement.requestFullscreen().catch(() => this.toast('Fullscreen was blocked', 'error'));
             } else {
                 document.exitFullscreen();
+            }
+        },
+
+        toggleOutputWindow() {
+            try {
+                const open = CLIFT.outputWindow.toggle();
+                if (open) this.toast('Projector window open: drag it to the projector, double-click for fullscreen', 'info', 4500);
+            } catch (err) {
+                this.toast(err.message, 'error', 4500);
             }
         },
 
@@ -361,6 +376,7 @@
                 const [w, h] = e.resolutions[Number(ev.target.value)];
                 e.setResolution(w, h);
             };
+            $('output-window-btn').onclick = () => this.toggleOutputWindow();
             $('renderer-select').onchange = (ev) => CLIFT.output.setRenderer(ev.target.value);
             if (!CLIFT.output.supported) $('renderer-select').disabled = true;
             $('pause-toggle').onclick = () => e.togglePause();
@@ -438,6 +454,137 @@
             $('transition-btn').onclick = () => e.startTransition();
             $('transition-beats').onchange = (ev) => { e.transitionBeats = Number(ev.target.value); CLIFT.events.emit('state'); };
             this.previewCtx = [0, 1].map(i => $(`deck-preview-${i}`).getContext('2d'));
+        },
+
+        bindSnapshots() {
+            const box = $('snapshot-slots');
+            for (let i = 0; i < CLIFT.snapshots.SLOTS; i++) {
+                const b = document.createElement('button');
+                b.className = 'snap';
+                b.dataset.slot = i;
+                b.textContent = i + 1;
+                box.appendChild(b);
+            }
+            const flash = (b) => { b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 180); };
+            box.onclick = (ev) => {
+                const b = ev.target.closest('.snap');
+                if (!b) return;
+                const i = Number(b.dataset.slot);
+                if (ev.shiftKey || !CLIFT.snapshots.slots[i]) {
+                    CLIFT.snapshots.save(i);
+                    this.toast(`Saved snapshot ${i + 1}`);
+                } else {
+                    CLIFT.snapshots.recall(i);
+                }
+                flash(b);
+            };
+            box.oncontextmenu = (ev) => {
+                const b = ev.target.closest('.snap');
+                if (!b) return;
+                ev.preventDefault();
+                CLIFT.snapshots.clear(Number(b.dataset.slot));
+            };
+        },
+
+        bindText() {
+            const t = CLIFT.textOverlay;
+            fillSelect($('text-mode'), t.modes.map(m => [m, m]));
+            fillSelect($('text-color'), CLIFT.palette.pairs.slice(1).map((p, i) => [i + 1, p.name]));
+            const input = $('text-input');
+            input.value = t.text;
+            input.oninput = () => t.set('text', input.value);
+            input.onkeydown = (ev) => {
+                if (ev.key === 'Enter') { t.toggle(true); input.blur(); }
+                if (ev.key === 'Escape') input.blur();
+            };
+            $('text-toggle').onclick = () => t.toggle();
+            $('text-mode').onchange = (ev) => t.set('mode', ev.target.value);
+            $('text-color').onchange = (ev) => t.set('color', Number(ev.target.value));
+            $('text-pulse').onchange = (ev) => t.set('pulse', ev.target.checked);
+        },
+
+        bindMidi() {
+            const midi = CLIFT.midi;
+            $('midi-enable').onclick = async () => {
+                try {
+                    await midi.enable();
+                    this.toast(midi.inputs.length ? `MIDI: ${midi.inputs.join(', ')}` : 'MIDI enabled - no device connected yet');
+                } catch (err) {
+                    midi.error = err.message;
+                    this.toast(err.message, 'error', 4500);
+                    this.syncMidi();
+                }
+            };
+            $('midi-map-btn').onclick = () => {
+                this.renderMidiTable();
+                this.openDialog('midi-modal');
+            };
+            $('midi-modal').addEventListener('close', () => { if (midi.learning) midi.learn(null); });
+            $('midi-clock').onchange = (ev) => midi.setClockSync(ev.target.checked);
+            $('midi-clear').onclick = () => {
+                if (confirm('Remove all MIDI mappings?')) midi.clearAll();
+            };
+            $('midi-table').onclick = (ev) => {
+                const b = ev.target.closest('button');
+                if (!b) return;
+                if (b.dataset.learn) midi.learn(b.dataset.learn);
+                else if (b.dataset.unbind) midi.unbind(b.dataset.unbind);
+            };
+        },
+
+        renderMidiTable() {
+            const midi = CLIFT.midi;
+            const rows = [];
+            let lastType = '';
+            for (const t of midi.TARGETS) {
+                if (t.type !== lastType) {
+                    lastType = t.type;
+                    const h = document.createElement('div');
+                    h.className = 'midi-head';
+                    h.textContent = t.type === 'range' ? 'Knobs & faders' : 'Pads & buttons';
+                    rows.push(h);
+                }
+                const name = document.createElement('span');
+                name.textContent = t.label;
+                const key = midi.bindingFor(t.id);
+                const bind = document.createElement('span');
+                bind.className = 'bind' + (key ? '' : ' none');
+                bind.textContent = key ? midi.describe(key) : '-';
+                const learn = document.createElement('button');
+                learn.dataset.learn = t.id;
+                learn.textContent = midi.learning === t.id ? 'Waiting…' : 'Learn';
+                learn.classList.toggle('learning', midi.learning === t.id);
+                learn.disabled = !midi.enabled;
+                const del = document.createElement('button');
+                del.dataset.unbind = t.id;
+                del.textContent = '✕';
+                del.title = 'Remove mapping';
+                del.disabled = !key;
+                rows.push(name, bind, learn, del);
+            }
+            $('midi-table').replaceChildren(...rows);
+        },
+
+        syncMidi() {
+            const midi = CLIFT.midi;
+            const mapped = Object.keys(midi.bindings).length;
+            $('midi-state').textContent = midi.enabled ? `${midi.inputs.length} in` : 'off';
+            $('midi-state').classList.toggle('on', midi.enabled);
+            $('midi-enable').textContent = midi.enabled ? 'MIDI on' : 'Enable MIDI';
+            $('midi-enable').classList.toggle('on', midi.enabled);
+            $('midi-info').textContent = midi.error ? midi.error
+                : midi.enabled ? `${midi.inputs.length ? midi.inputs.join(', ') : 'No device connected'} · ${mapped} mapping${mapped === 1 ? '' : 's'}`
+                    : `${mapped} saved mapping${mapped === 1 ? '' : 's'}. Enable to use a controller.`;
+            $('midi-clock').checked = midi.clockSync;
+            if ($('midi-modal').open) this.renderMidiTable();
+        },
+
+        midiActivity() {
+            const state = $('midi-state');
+            state.classList.add('activity');
+            clearTimeout(this.midiTimer);
+            this.midiTimer = setTimeout(() => state.classList.remove('activity'), 120);
+            if ($('midi-modal').open) $('midi-last').textContent = `Last: ${CLIFT.midi.lastMessage}`;
         },
 
         bindDialogs() {
@@ -544,6 +691,24 @@
             $('badge-auto').hidden = !auto.enabled;
             $('auto-rate').value = auto.rate;
             for (const c of $('auto-options').querySelectorAll('input')) c.checked = !!auto.options[c.dataset.opt];
+
+            const snaps = CLIFT.snapshots;
+            for (const b of $('snapshot-slots').children) {
+                const i = Number(b.dataset.slot);
+                b.classList.toggle('filled', !!snaps.slots[i]);
+                b.title = snaps.label(i);
+            }
+
+            const t = CLIFT.textOverlay;
+            setToggle($('text-toggle'), t.enabled, 'Showing', 'Show');
+            $('text-state').textContent = t.enabled ? t.mode : 'off';
+            $('text-state').classList.toggle('on', t.enabled);
+            $('text-mode').value = t.mode;
+            $('text-color').value = t.color;
+            $('text-pulse').checked = t.pulse;
+            if (document.activeElement !== $('text-input')) $('text-input').value = t.text;
+
+            setToggle($('output-window-btn'), CLIFT.outputWindow.isOpen, 'Close projector window', 'Projector window');
 
             const resIndex = e.resolutions.findIndex(([w, h]) => w === e.width && h === e.height);
             $('res-select').value = resIndex;

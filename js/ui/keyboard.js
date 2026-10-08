@@ -43,8 +43,14 @@
         { group: 'Scenes', label: '↑ ↓', desc: 'Previous / next bank', code: ['ArrowUp', 'ArrowDown'],
             run: (ev) => e().stepBank(ev.code === 'ArrowUp' ? -1 : 1) },
         { group: 'Scenes', label: '1 … 0', desc: 'Scene 1-10 of the current bank',
-            code: ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'],
+            code: ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'], noShift: true,
             run: (ev) => e().sceneInBank((Number(ev.code.slice(5)) + 9) % 10) },
+        { group: 'Scenes', label: 'Shift+1 … 8', desc: 'Recall snapshot 1-8', shift: true,
+            code: ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8'],
+            run: (ev) => {
+                const i = Number(ev.code.slice(5)) - 1;
+                if (!CLIFT.snapshots.recall(i)) ui().toast(`Snapshot ${i + 1} is empty - Shift+click its slot to save`);
+            } },
         { group: 'Scenes', label: 'Tab', desc: 'Switch edit deck A/B', code: ['Tab'],
             run: () => e().selectDeck(1 - e().activeDeck) },
 
@@ -84,6 +90,8 @@
             run: (ev) => e().stepResolution(ev.key === '[' ? -1 : 1) },
         { group: 'Output', label: 'O', desc: 'Record video', key: ['o'], run: () => ui().toggleRecording() },
         { group: 'Output', label: 'F', desc: 'Fullscreen', key: ['f'], run: () => ui().toggleFullscreen() },
+        { group: 'Output', label: 'Shift+F', desc: 'Projector output window', key: ['f'], shift: true, run: () => ui().toggleOutputWindow() },
+        { group: 'Output', label: 'L', desc: 'Text overlay on/off', key: ['l'], run: () => CLIFT.textOverlay.toggle() },
         { group: 'Output', label: 'U', desc: 'Hide / show the interface', key: ['u'], run: () => ui().toggleUI() },
         { group: 'Output', label: 'W', desc: 'Live-coding server connect', key: ['w'], run: () => CLIFT.ws.toggle() },
 
@@ -92,10 +100,14 @@
             run: () => { if (!ui().closeDialogs()) CLIFT.automation.toggle(false); } }
     ];
 
+    // Key entries need Shift exactly as declared; code entries (arrows, Space...)
+    // ignore Shift unless they say `shift` or `noShift`.
     function matches(entry, ev) {
         if (entry.code && !entry.code.includes(ev.code)) return false;
         if (entry.key && !entry.key.includes(ev.key.toLowerCase())) return false;
-        if (!entry.anyShift && !!entry.shift !== ev.shiftKey && !entry.code) return false;
+        if (entry.anyShift) return true;
+        if (entry.shift) return ev.shiftKey;
+        if (entry.key || entry.noShift) return !ev.shiftKey;
         return true;
     }
 
@@ -124,20 +136,22 @@
             return groups;
         },
 
-        init() {
-            document.addEventListener('keydown', (ev) => {
-                if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-                if (isTyping(ev.target) || editorOpen()) return;
-                // Range sliders keep their arrow keys.
-                if (ev.target.type === 'range' && ev.code.startsWith('Arrow')) return;
-                // Inside an open dialog only Esc is handled (by us) - everything else is ignored.
-                if (document.querySelector('dialog[open]') && ev.code !== 'Escape') return;
+        handle(ev) {
+            if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+            if (isTyping(ev.target) || editorOpen()) return;
+            // Range sliders keep their arrow keys.
+            if (ev.target.type === 'range' && ev.code.startsWith('Arrow')) return;
+            // Inside an open dialog only Esc is handled (by us) - everything else is ignored.
+            if (document.querySelector('dialog[open]') && ev.code !== 'Escape') return;
 
-                const entry = KEYMAP.find(k => matches(k, ev));
-                if (!entry) return;
-                ev.preventDefault();
-                entry.run(ev);
-            });
+            const entry = KEYMAP.find(k => matches(k, ev));
+            if (!entry) return;
+            ev.preventDefault();
+            entry.run(ev);
+        },
+
+        init() {
+            document.addEventListener('keydown', (ev) => this.handle(ev));
         }
     };
 })();

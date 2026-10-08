@@ -168,6 +168,7 @@
                 this.renderDeck(this.decks[1], this.bufferB, this.colorBufferB);
                 this.mixBuffers();
                 if (this.currentEffect > 0) this.applyEffect();
+                CLIFT.textOverlay.apply(this);
 
                 if (this.renderMode !== 0) {
                     this.drawRenderMode();
@@ -215,8 +216,19 @@
                 const avg = (taps[taps.length - 1] - taps[0]) / (taps.length - 1);
                 this.setBPM(60000 / avg);
             }
-            this.clock.phase = 0;
+            this.syncDownbeat();
             return taps.length;
+        }
+
+        // Snap the beat phase to 0 "now" (tap tempo, MIDI clock). If we were late
+        // in the beat, count it as the next beat so no beat event is lost.
+        syncDownbeat() {
+            const c = this.clock;
+            if (c.phase > 0.5) {
+                c.count++;
+                CLIFT.events.emit('clock-beat', c.count);
+            }
+            c.phase = 0;
         }
 
         // ---- decks & scenes ----------------------------------------------------

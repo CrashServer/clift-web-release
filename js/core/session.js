@@ -39,7 +39,14 @@
                     rate: CLIFT.automation.rate,
                     options: Object.assign({}, CLIFT.automation.options)
                 },
-                audioGain: CLIFT.audio.gain
+                audioGain: CLIFT.audio.gain,
+                snapshots: CLIFT.snapshots.slots,
+                text: {
+                    text: CLIFT.textOverlay.text,
+                    mode: CLIFT.textOverlay.mode,
+                    color: CLIFT.textOverlay.color,
+                    pulse: CLIFT.textOverlay.pulse
+                }
             };
         },
 
@@ -82,6 +89,15 @@
                 Object.assign(CLIFT.automation.options, data.auto.options || {});
             }
             if (typeof data.audioGain === 'number') CLIFT.audio.setGain(CLIFT.util.clamp(data.audioGain, 0.1, 8));
+            if (data.snapshots) CLIFT.snapshots.setAll(data.snapshots);
+            if (data.text) {
+                const t = CLIFT.textOverlay;
+                if (typeof data.text.text === 'string') t.text = data.text.text.slice(0, 200);
+                if (t.modes.includes(data.text.mode)) t.mode = data.text.mode;
+                t.color = CLIFT.util.clamp(num(data.text.color, 7), 1, CLIFT.palette.count);
+                t.pulse = !!data.text.pulse;
+                t.cache = null;
+            }
 
             CLIFT.events.emit('state');
             CLIFT.events.emit('crossfader', e.crossfader);
