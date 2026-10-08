@@ -98,17 +98,10 @@
             this.slowBass += (raw.bass - this.slowBass) * k(6000);
             this.beatPeak = Math.max(this.beatPeak, raw.bass);
 
-            // Drop = the kick coming back after a breakdown / build-up. Checked every
-            // frame so the cut lands on the kick, not a beat later.
-            const hist = this.bassHistory;
-            if (this.enabled && (this.section === 'break' || this.section === 'build') && hist.length >= 4) {
-                const recent = Math.max(...hist.slice(-2));
-                const count = this.engine.clock.count;
-                if (recent < this.peakAvg * 0.6 && raw.bass > this.peakAvg * 0.8 && count - this.lastDrop > 16) {
-                    this.lastDrop = count;
-                    this.dropMoment();
-                }
-            }
+            // Drop = the kick coming back after at least 3 beats without it (breakdown,
+            // build-up). Checked every frame so the cut lands on the kick. Deliberately
+            // independent of the section label, which can flip to "peak" on a loud riser.
+            if (this.enabled && this.kickAbsent() && raw.bass > this.peakAvg * 0.8) this.drop();
             // Reference loudness: follows peaks quickly, forgets them over ~30s.
             this.ref = Math.max(this.fast, this.ref - (this.ref - this.slow) * k(30000), 0.02);
         },
@@ -127,16 +120,13 @@
             const kickGone = bassHist.length >= 2 && Math.max(...bassHist.slice(-2)) < this.peakAvg * 0.5;
 
             // Fallback for low frame rates, where update() can miss the first kick:
-            // the kick is clearly back this beat after low beats -> drop, one beat late.
-            const count = this.engine.clock.count;
-            if ((this.section === 'break' || this.section === 'build') && bassHist.length >= 4 &&
-                Math.max(...bassHist.slice(-3, -1)) < this.peakAvg * 0.6 && this.beatPeak > this.peakAvg * 0.8 &&
-                count - this.lastDrop > 16) {
-                this.lastDrop = count;
-                this.dropMoment();
-            }
-            // Only beats with a kick teach us the kick level.
-            if (!kickGone) this.peakAvg += (this.beatPeak - this.peakAvg) * 0.15;
+            // the kick is clearly back this beat after 3 beats without -> drop, one beat late.
+            if (this.beatPeak > this.peakAvg * 0.8 && this.kickAbsent(1)) this.drop();
+            // Kick reference level: learn only from beats that look like kicks, otherwise
+            // drift down very slowly (so quieter tracks still adapt, but a breakdown or a
+            // riser doesn't drag the reference down and hide the drop).
+            if (this.beatPeak > this.peakAvg * 0.7) this.peakAvg += (this.beatPeak - this.peakAvg) * 0.15;
+            else this.peakAvg = Math.max(0.05, this.peakAvg * 0.995);
             this.beatPeak = 0;
 
             let next;
@@ -151,6 +141,21 @@
             const prev = this.section;
             if (next !== prev && this.candidateBeats >= 2) this.section = next;
             return { entered: this.section !== prev ? this.section : null };
+        },
+
+        // True when the last 3 beats (ignoring the newest `skip`) had no kick.
+        kickAbsent(skip = 0) {
+            const h = this.bassHistory;
+            if (h.length < 3 + skip) return false;
+            const window = h.slice(h.length - 3 - skip, h.length - skip);
+            return Math.max(...window) < this.peakAvg * 0.55;
+        },
+
+        drop() {
+            const count = this.engine.clock.count;
+            if (count - this.lastDrop <= 16) return;
+            this.lastDrop = count;
+            this.dropMoment();
         },
 
         get energyTarget() {
