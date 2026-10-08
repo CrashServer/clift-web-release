@@ -169,8 +169,8 @@ function(buffer, width, height, time, params) {
                             
                             <div class="scene-info">
                                 <h3>Scene Info</h3>
-                                <label>Scene ID: <input type="number" id="scene-id" min="200" value="200"></label>
-                                <label>Category: <input type="number" id="scene-category" min="20" value="20"></label>
+                                <label>Scene ID: <input type="number" id="scene-id" min="1000" value="1000"></label>
+                                <input type="hidden" id="scene-category" value="0">
                                 <label>Name: <input type="text" id="scene-name" placeholder="Custom Scene"></label>
                             </div>
                             
@@ -571,6 +571,7 @@ function(buffer, width, height, time, params) {
             this.loadScene(sceneId);
         } else {
             // Load basic template
+            document.getElementById('scene-id').value = CLIFT.custom.nextFreeId();
             document.getElementById('scene-code').value = this.sceneTemplates.basic;
             this.validateCode();
         }
@@ -601,11 +602,14 @@ function(buffer, width, height, time, params) {
             sceneCode: document.getElementById('scene-code')
         };
         
-        elements.sceneId.value = sceneId;
-        elements.sceneCategory.value = Math.floor(sceneId / 10);
-        elements.sceneName.value = `Scene ${sceneId}`;
+        const custom = CLIFT.custom.entry(sceneId);
+        // Built-in scenes are opened as a copy in a new custom slot.
+        elements.sceneId.value = custom ? sceneId : CLIFT.custom.nextFreeId();
+        elements.sceneName.value = custom ? custom.name : `${CLIFT.catalog.name(sceneId)} (copy)`;
         
-        if (window.CLIFTScenes && window.CLIFTScenes[sceneId]) {
+        if (custom) {
+            elements.sceneCode.value = custom.code;
+        } else if (window.CLIFTScenes && window.CLIFTScenes[sceneId]) {
             elements.sceneCode.value = window.CLIFTScenes[sceneId].toString();
         } else {
             elements.sceneCode.value = this.sceneTemplates.basic;
@@ -620,42 +624,11 @@ function(buffer, width, height, time, params) {
         const sceneId = parseInt(document.getElementById('scene-id').value);
         
         try {
-            const sceneFunction = eval(`(${code})`);
-            
-            // Test the scene function
-            if (typeof sceneFunction === 'function') {
-                // Initialize custom scenes storage
-                if (!window.CLIFTCustomScenes) {
-                    window.CLIFTCustomScenes = {};
-                }
-                
-                // Temporarily replace the scene
-                const originalScene = window.CLIFTCustomScenes[sceneId];
-                window.CLIFTCustomScenes[sceneId] = sceneFunction;
-                
-                // Switch to test scene
-                if (window.clift) {
-                    window.clift.selectCategory(Math.floor(sceneId / 10));
-                    window.clift.selectDeck(0);
-                    window.clift.decks[0].scene = sceneId % 10;
-                    
-                    this.showStatus('Testing custom scene...', 'success');
-                    
-                    // Restore original scene after 10 seconds
-                    setTimeout(() => {
-                        if (originalScene) {
-                            window.CLIFTCustomScenes[sceneId] = originalScene;
-                        } else {
-                            delete window.CLIFTCustomScenes[sceneId];
-                        }
-                        this.showStatus('Test complete', 'success');
-                    }, 10000);
-                } else {
-                    this.showStatus('CLIFT engine not available', 'error');
-                }
-            } else {
-                this.showStatus('Invalid function', 'error');
-            }
+            // Run it in the "Editor Live" slot on the edit deck.
+            CLIFT.custom.setLive(CLIFT.custom.compile(code));
+            CLIFT.catalog.broken.delete(CLIFT.custom.LIVE_ID);
+            window.clift.setScene(CLIFT.custom.LIVE_ID);
+            this.showStatus('Running on the edit deck as "Editor Live"', 'success');
         } catch (e) {
             this.showStatus(`Error: ${e.message}`, 'error');
         }
@@ -666,22 +639,14 @@ function(buffer, width, height, time, params) {
         const code = document.getElementById('scene-code').value;
         const sceneId = parseInt(document.getElementById('scene-id').value);
         
+        const name = document.getElementById('scene-name').value.trim();
+        
         try {
-            const sceneFunction = eval(`(${code})`);
-            
-            if (typeof sceneFunction === 'function') {
-                // Initialize custom scenes storage
-                if (!window.CLIFTCustomScenes) {
-                    window.CLIFTCustomScenes = {};
-                }
-                
-                window.CLIFTCustomScenes[sceneId] = sceneFunction;
-                this.showStatus(`Custom scene ${sceneId} saved successfully`, 'success');
-                
-                console.log(`Custom scene ${sceneId} saved`);
-            } else {
-                this.showStatus('Invalid function', 'error');
-            }
+            const id = CLIFT.custom.save(sceneId, { name, type: 'code', code });
+            document.getElementById('scene-id').value = id;
+            CLIFT.catalog.broken.delete(id);
+            window.clift.setScene(id);
+            this.showStatus(`Saved as custom scene ${id} (Custom bank)`, 'success');
         } catch (e) {
             this.showStatus(`Error: ${e.message}`, 'error');
         }
@@ -853,4 +818,4 @@ document.addEventListener('DOMContentLoaded', function() {
     CLIFTSceneEditor.init();
 });
 
-console.log('CLIFT Scene Editor loaded');
+CLIFT.log('CLIFT Scene Editor loaded');

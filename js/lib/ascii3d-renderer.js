@@ -46,7 +46,7 @@ window.CLIFT3DRenderer = {
         this.height = height || 24;
         this.createBuffers();
         this.createDefaultScene();
-        console.log('3D ASCII Renderer initialized:', this.width + 'x' + this.height);
+        CLIFT.log('3D ASCII Renderer initialized:', this.width + 'x' + this.height);
     },
     
     // Create rendering buffers
@@ -601,9 +601,9 @@ window.CLIFT3DRenderer = {
         this.objects.length = 0;
         this.lights.length = 0;
         this.initialized = false;
-        console.log('3D ASCII Renderer cleaned up');
+        CLIFT.log('3D ASCII Renderer cleaned up');
     }
 };
 
 // Initialize the 3D renderer
-console.log('3D ASCII Renderer loaded');
+CLIFT.log('3D ASCII Renderer loaded');

@@ -477,4 +477,4 @@ CLIFTEffects['Dither'] = function(buffer, width, height, params) {
     });
 };
 
-console.log('CLIFT Shader Effects loaded - 6 new effects available');
+CLIFT.log('CLIFT Shader Effects loaded - 6 new effects available');

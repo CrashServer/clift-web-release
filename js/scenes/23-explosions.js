@@ -214,14 +214,15 @@ window.CLIFTScenes[228] = function(buffer, width, height, time, params) {
     const volcanoBase = height - 5;
     const volcanoCenter = width / 2;
     
-    // Draw volcano shape
+    // Draw volcano shape (narrow crater at the top, widening toward the ground)
+    let levelWidth = volcanoWidth * 0.5;
     for (let y = volcanoBase; y < height; y++) {
-        for (let x = volcanoCenter - volcanoWidth/2; x < volcanoCenter + volcanoWidth/2; x++) {
+        for (let x = volcanoCenter - levelWidth/2; x < volcanoCenter + levelWidth/2; x++) {
             if (x >= 0 && x < width) {
                 buffer[Math.floor(y)][Math.floor(x)] = '▓';
             }
         }
-        volcanoWidth *= 0.9; // Taper
+        levelWidth *= 1.2;
     }
     
     // Explosive eruption

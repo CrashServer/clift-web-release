@@ -1,0 +1,695 @@
+// Control panel, mixer bar and status bar. All DOM state is derived from the
+// engine in sync() (on 'state' events) and onFrame() (meters, previews).
+
+(function () {
+    const $ = (id) => document.getElementById(id);
+    const { storage } = CLIFT.util;
+
+    function option(value, label) {
+        const o = document.createElement('option');
+        o.value = value;
+        o.textContent = label;
+        return o;
+    }
+
+    function fillSelect(select, items) {
+        select.replaceChildren(...items.map(([value, label]) => option(value, label)));
+    }
+
+    function setToggle(el, on, onLabel, offLabel) {
+        el.classList.toggle('on', !!on);
+        if (onLabel) el.textContent = on ? onLabel : offLabel;
+    }
+
+    const ui = {
+        init(engine) {
+            this.e = engine;
+            this.browseBank = CLIFT.catalog.bankIndexOf(engine.deck().sceneId);
+            this.listKey = '';
+
+            this.buildStatic();
+            this.bindTopbar();
+            this.bindScenes();
+            this.bindDeck();
+            this.bindFx();
+            this.bindPostFx();
+            this.bindAudio();
+            this.bindTempo();
+            this.bindAuto();
+            this.bindOutput();
+            this.bindSession();
+            this.bindMixer();
+            this.bindDialogs();
+            this.bindDragDrop();
+
+            // Mouse-clicked buttons keep focus, so a later Space/Enter would
+            // "click" them again on top of the shortcut. Drop focus after clicks.
+            document.addEventListener('click', (ev) => {
+                const btn = ev.target.closest('button');
+                if (btn && ev.detail > 0) btn.blur();
+            });
+
+            CLIFT.events.on('state', () => this.sync());
+            CLIFT.events.on('crossfader', (v) => this.syncCrossfader(v));
+            CLIFT.events.on('catalog-changed', () => { this.buildBanks(); this.listKey = ''; this.sync(); });
+            CLIFT.events.on('frame', () => this.onFrame());
+            CLIFT.events.on('audio-source', () => this.syncAudio());
+            CLIFT.events.on('ws-status', (s) => this.syncWs(s));
+            CLIFT.events.on('scene-error', ({ id }) => {
+                this.toast(`Scene ${id} "${CLIFT.catalog.name(id)}" crashed and was skipped`, 'error');
+                this.listKey = '';
+                this.renderSceneList();
+            });
+
+            for (const el of document.querySelectorAll('.section[data-section]')) {
+                const saved = storage.get('clift-ui-' + el.dataset.section);
+                if (saved !== null) el.open = saved;
+                el.addEventListener('toggle', () => storage.set('clift-ui-' + el.dataset.section, el.open));
+            }
+            if (storage.get('clift-ui-panel-closed')) document.body.classList.add('panel-closed');
+
+            this.sync();
+            this.syncCrossfader(engine.crossfader);
+            this.syncAudio();
+            this.syncWs(CLIFT.ws.status);
+        },
+
+        // ---- helpers --------------------------------------------------------------
+
+        toast(message, kind = 'info', ms = 2600) {
+            const el = document.createElement('div');
+            el.className = 'toast' + (kind === 'error' ? ' error' : '');
+            el.textContent = message;
+            $('toasts').appendChild(el);
+            setTimeout(() => el.classList.add('out'), ms);
+            setTimeout(() => el.remove(), ms + 400);
+        },
+
+        toggleUI() {
+            document.body.classList.toggle('hide-ui');
+        },
+
+        togglePanel() {
+            const closed = document.body.classList.toggle('panel-closed');
+            storage.set('clift-ui-panel-closed', closed);
+        },
+
+        toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => this.toast('Fullscreen was blocked', 'error'));
+            } else {
+                document.exitFullscreen();
+            }
+        },
+
+        openDialog(id) {
+            const d = $(id);
+            if (!d.open) d.showModal();
+        },
+
+        closeDialogs() {
+            let closed = false;
+            for (const d of document.querySelectorAll('dialog[open]')) {
+                d.close();
+                closed = true;
+            }
+            return closed;
+        },
+
+        // ---- static content ---------------------------------------------------------
+
+        buildStatic() {
+            const e = this.e;
+            this.buildBanks();
+            fillSelect($('gradient-select'), CLIFT.palette.gradients.map((g, i) => [i, g]));
+            fillSelect($('effect-select'), e.effects.map((n, i) => [i, n]));
+            fillSelect($('render-select'), e.renderModes.map((n, i) => [i, n]));
+            fillSelect($('color-mode-select'), e.colorModes.map((n, i) => [i, n]));
+            fillSelect($('mix-select'), e.mixModes.map((n, i) => [i, n]));
+            fillSelect($('transition-beats'), e.transitionBeatOptions.map(b => [b, `${b} beat${b > 1 ? 's' : ''}`]));
+            fillSelect($('res-select'), e.resolutions.map(([w, h], i) => [i, `${w} × ${h}`]));
+            fillSelect($('postfx-style'), CLIFT.output.styleNames.map(n => [n, n]));
+            fillSelect($('auto-rate'), CLIFT.automation.rates.map(r => [r, r]));
+
+            for (const which of ['primary', 'secondary']) {
+                const box = $(`${which}-swatches`);
+                for (let id = 1; id <= CLIFT.palette.count; id++) {
+                    const pair = CLIFT.palette.pair(id);
+                    const b = document.createElement('button');
+                    b.className = 'swatch';
+                    b.dataset.color = id;
+                    b.title = pair.name;
+                    b.style.background = pair.fg === '#000000' ? pair.bg : pair.fg;
+                    if (pair.fg === '#000000') {
+                        b.textContent = 'A';
+                        b.style.color = '#000';
+                        b.style.fontSize = '10px';
+                        b.style.fontWeight = 'bold';
+                    }
+                    box.appendChild(b);
+                }
+            }
+
+            const presets = $('postfx-presets');
+            for (const name of CLIFT.output.presetNames) {
+                const b = document.createElement('button');
+                b.textContent = name;
+                b.dataset.preset = name;
+                presets.appendChild(b);
+            }
+
+            const opts = $('auto-options');
+            for (const [key, label] of Object.entries(CLIFT.automation.optionLabels)) {
+                const l = document.createElement('label');
+                const c = document.createElement('input');
+                c.type = 'checkbox';
+                c.dataset.opt = key;
+                l.append(c, label);
+                opts.appendChild(l);
+            }
+
+            $('about-version').textContent = 'v' + CLIFT.version;
+            $('about-counts').textContent = `${Object.keys(window.CLIFTScenes).length} scenes, ` +
+                `${e.effects.length - 1} effects, ${e.renderModes.length - 1} experimental render modes.`;
+        },
+
+        buildBanks() {
+            const banks = CLIFT.catalog.allBanks();
+            fillSelect($('bank-select'), banks.map((b, i) => [i, `${String(i).padStart(2, '0')} ${b.name}`]));
+            this.browseBank = Math.min(this.browseBank, banks.length - 1);
+        },
+
+        // ---- bindings ------------------------------------------------------------------
+
+        bindTopbar() {
+            $('panel-toggle').onclick = () => this.togglePanel();
+            $('help-btn').onclick = () => this.openDialog('help-modal');
+            $('fullscreen-btn').onclick = () => this.toggleFullscreen();
+        },
+
+        bindScenes() {
+            $('bank-select').onchange = (ev) => {
+                this.browseBank = Number(ev.target.value);
+                $('scene-search').value = '';
+                this.renderSceneList();
+            };
+            $('scene-search').oninput = () => this.renderSceneList();
+            $('scene-search').onkeydown = (ev) => {
+                if (ev.key === 'Enter') {
+                    const first = $('scene-list').querySelector('.scene-item');
+                    if (first) this.e.setScene(Number(first.dataset.id));
+                } else if (ev.key === 'Escape') {
+                    ev.target.value = '';
+                    ev.target.blur();
+                    this.renderSceneList();
+                }
+            };
+            $('scene-list').onclick = (ev) => {
+                const item = ev.target.closest('.scene-item');
+                if (!item) return;
+                const deck = ev.shiftKey ? 1 - this.e.activeDeck : this.e.activeDeck;
+                this.e.setScene(Number(item.dataset.id), deck);
+            };
+        },
+
+        bindDeck() {
+            $('edit-deck-seg').onclick = (ev) => {
+                const b = ev.target.closest('button');
+                if (b) this.e.selectDeck(Number(b.dataset.deck));
+            };
+            for (const which of ['primary', 'secondary']) {
+                $(`${which}-swatches`).onclick = (ev) => {
+                    const b = ev.target.closest('.swatch');
+                    if (b) this.e.setDeckColor(which, Number(b.dataset.color));
+                };
+            }
+            $('gradient-select').onchange = (ev) => {
+                this.e.deck().gradientType = Number(ev.target.value);
+                CLIFT.events.emit('state');
+            };
+            $('random-colors').onclick = () => this.e.randomizeColors();
+            for (const p of ['param1', 'param2', 'param3']) {
+                $(p).oninput = (ev) => {
+                    this.e.deck().params[p] = Number(ev.target.value);
+                    $(`${p}-val`).textContent = Number(ev.target.value).toFixed(2);
+                };
+                $(p).onchange = () => CLIFT.events.emit('state');
+            }
+        },
+
+        bindFx() {
+            const e = this.e;
+            $('effect-select').onchange = (ev) => e.setEffect(Number(ev.target.value));
+            $('effect-prev').onclick = () => e.setEffect(e.currentEffect - 1);
+            $('effect-next').onclick = () => e.setEffect(e.currentEffect + 1);
+            $('render-select').onchange = (ev) => e.setRenderMode(Number(ev.target.value));
+            $('color-mode-select').onchange = (ev) => { e.colorMode = Number(ev.target.value); CLIFT.events.emit('state'); };
+            $('color-toggle').onclick = () => { e.colorEnabled = !e.colorEnabled; CLIFT.events.emit('state'); };
+            $('invert-toggle').onclick = () => { e.invertColors = !e.invertColors; CLIFT.events.emit('state'); };
+        },
+
+        bindPostFx() {
+            const out = CLIFT.output;
+            if (!out.supported) {
+                $('postfx-unsupported').hidden = false;
+                for (const el of $('panel').querySelectorAll('[data-section="postfx"] button, [data-section="postfx"] input, [data-section="postfx"] select')) {
+                    el.disabled = true;
+                }
+                return;
+            }
+            $('postfx-toggle').onclick = () => out.toggle();
+            $('postfx-presets').onclick = (ev) => {
+                const b = ev.target.closest('button');
+                if (b) out.applyPreset(b.dataset.preset);
+            };
+            $('postfx-style').onchange = (ev) => out.set('style', ev.target.value);
+            for (const key of ['glow', 'glowSize', 'scanlines', 'vignette', 'chroma']) {
+                const input = $(`fx-${key}`);
+                input.oninput = () => {
+                    out.options[key] = Number(input.value);
+                    out.preset = '';
+                    input.nextElementSibling.textContent = Number(input.value).toFixed(1);
+                };
+                input.onchange = () => {
+                    if (!out.options.enabled) out.set('enabled', true);
+                    CLIFT.events.emit('state');
+                };
+            }
+        },
+
+        bindAudio() {
+            const audio = CLIFT.audio;
+            $('audio-source-seg').onclick = async (ev) => {
+                const b = ev.target.closest('button');
+                if (!b) return;
+                if (b.dataset.source === 'demo') audio.useDemo();
+                else if (b.dataset.source === 'mic') await this.startMic();
+                else $('audio-file').click();
+            };
+            $('audio-file').onchange = (ev) => {
+                const file = ev.target.files[0];
+                if (file) this.startAudioFile(file);
+                ev.target.value = '';
+            };
+            $('audio-device').onchange = (ev) => this.startMic(ev.target.value);
+            const gain = $('audio-gain');
+            gain.oninput = () => {
+                audio.setGain(Number(gain.value));
+                gain.nextElementSibling.textContent = Number(gain.value).toFixed(1);
+            };
+            gain.onchange = () => CLIFT.events.emit('state');
+            this.meterBars = Array.from($('meters').querySelectorAll('.meter i'));
+        },
+
+        async startMic(deviceId) {
+            const err = $('audio-error');
+            try {
+                await CLIFT.audio.startMic(deviceId);
+                err.hidden = true;
+                const inputs = await CLIFT.audio.listInputs();
+                const select = $('audio-device');
+                fillSelect(select, inputs.map(d => [d.id, d.label]));
+                const current = CLIFT.audio.stream && CLIFT.audio.stream.getAudioTracks()[0];
+                const settings = current && current.getSettings ? current.getSettings() : {};
+                if (settings.deviceId) select.value = settings.deviceId;
+                select.hidden = inputs.length < 2;
+                this.toast('Audio input live');
+            } catch (e) {
+                const msg = e.name === 'NotAllowedError' ? 'Microphone permission was denied in the browser'
+                    : e.name === 'NotFoundError' ? 'No audio input device found' : e.message;
+                err.textContent = msg;
+                err.hidden = false;
+                this.toast(msg, 'error', 4000);
+                CLIFT.audio.useDemo();
+            }
+        },
+
+        async startAudioFile(file) {
+            try {
+                await CLIFT.audio.startFile(file);
+                $('audio-error').hidden = true;
+                this.toast(`Playing ${file.name}`);
+            } catch (e) {
+                this.toast(`Could not play ${file.name}: ${e.message}`, 'error', 4000);
+                CLIFT.audio.useDemo();
+            }
+        },
+
+        bindTempo() {
+            const e = this.e;
+            $('bpm-input').onchange = (ev) => e.setBPM(Number(ev.target.value) || e.bpm);
+            $('tap-btn').onclick = () => e.tap();
+            $('bpm-sync').onclick = () => {
+                if (CLIFT.audio.detectedBPM) e.setBPM(CLIFT.audio.detectedBPM);
+                else this.toast('No tempo detected yet');
+            };
+        },
+
+        bindAuto() {
+            const auto = CLIFT.automation;
+            $('auto-toggle').onclick = () => auto.toggle();
+            $('auto-rate').onchange = (ev) => { auto.rate = ev.target.value; CLIFT.events.emit('state'); };
+            $('auto-options').onchange = (ev) => {
+                const key = ev.target.dataset.opt;
+                if (key) { auto.options[key] = ev.target.checked; CLIFT.events.emit('state'); }
+            };
+        },
+
+        bindOutput() {
+            const e = this.e;
+            $('res-select').onchange = (ev) => {
+                const [w, h] = e.resolutions[Number(ev.target.value)];
+                e.setResolution(w, h);
+            };
+            $('pause-toggle').onclick = () => e.togglePause();
+            $('record-toggle').onclick = () => this.toggleRecording();
+        },
+
+        toggleRecording() {
+            try {
+                const on = CLIFT.recorder.toggle();
+                this.toast(on ? 'Recording…' : 'Recording saved to downloads');
+            } catch (err) {
+                this.toast(err.message, 'error');
+            }
+        },
+
+        bindSession() {
+            $('session-save').onclick = () => {
+                CLIFT.session.exportFile('session');
+                this.toast('Session file downloaded');
+            };
+            $('session-load').onclick = () => $('session-file').click();
+            $('session-file').onchange = (ev) => {
+                const file = ev.target.files[0];
+                if (file) this.loadSessionFile(file);
+                ev.target.value = '';
+            };
+            $('session-reset').onclick = () => {
+                if (!confirm('Reset CLIFT to its default settings?')) return;
+                CLIFT.session.reset();
+            };
+            $('node-editor-btn').onclick = () => this.openEditor('node');
+            $('code-editor-btn').onclick = () => this.openEditor('code');
+            $('ws-url').value = CLIFT.ws.url;
+            $('ws-url').onchange = (ev) => CLIFT.ws.setUrl(ev.target.value);
+            $('ws-toggle').onclick = () => CLIFT.ws.toggle();
+            $('about-btn').onclick = () => this.openDialog('about-modal');
+        },
+
+        loadSessionFile(file) {
+            CLIFT.session.importFile(file)
+                .then(() => this.toast(`Loaded ${file.name}`))
+                .catch(err => this.toast(`Could not load ${file.name}: ${err.message}`, 'error', 4000));
+        },
+
+        openEditor(kind) {
+            const editor = kind === 'node' ? window.CLIFTNodeEditor : window.CLIFTSceneEditor;
+            if (editor && editor.open) {
+                this.closeDialogs();
+                // The code editor opens the edit deck's scene (built-ins as an editable copy).
+                if (kind === 'code') editor.open(this.e.deck().sceneId);
+                else editor.open();
+            } else {
+                this.toast('Editor failed to load - see console', 'error');
+            }
+        },
+
+        bindMixer() {
+            const e = this.e;
+            for (const i of [0, 1]) {
+                const card = $(`deck-card-${i}`);
+                card.onclick = (ev) => {
+                    const step = ev.target.closest('[data-step]');
+                    if (step) e.stepScene(Number(step.dataset.step), i);
+                    else e.selectDeck(i);
+                };
+            }
+            const xf = $('crossfader');
+            xf.oninput = () => {
+                e.transition = null;
+                e.setCrossfader(Number(xf.value) / 1000);
+            };
+            $('xf-a').onclick = () => { e.transition = null; e.setCrossfader(0); };
+            $('xf-b').onclick = () => { e.transition = null; e.setCrossfader(1); };
+            $('mix-select').onchange = (ev) => { e.mixMode = Number(ev.target.value); CLIFT.events.emit('state'); };
+            $('transition-btn').onclick = () => e.startTransition();
+            $('transition-beats').onchange = (ev) => { e.transitionBeats = Number(ev.target.value); CLIFT.events.emit('state'); };
+            this.previewCtx = [0, 1].map(i => $(`deck-preview-${i}`).getContext('2d'));
+        },
+
+        bindDialogs() {
+            for (const d of document.querySelectorAll('dialog')) {
+                d.addEventListener('click', (ev) => {
+                    if (ev.target === d || ev.target.closest('[data-close]')) d.close();
+                });
+            }
+            const table = $('keys-table');
+            for (const group of CLIFT.keyboard.groups()) {
+                const g = document.createElement('div');
+                g.className = 'key-group';
+                const h = document.createElement('h3');
+                h.textContent = group.name;
+                g.appendChild(h);
+                for (const k of group.keys) {
+                    const row = document.createElement('div');
+                    row.className = 'key-row';
+                    const kbd = document.createElement('kbd');
+                    kbd.textContent = k.label;
+                    const span = document.createElement('span');
+                    span.textContent = k.desc;
+                    row.append(kbd, span);
+                    g.appendChild(row);
+                }
+                table.appendChild(g);
+            }
+        },
+
+        // Drop an audio file to play it, or a .json session to load it.
+        bindDragDrop() {
+            window.addEventListener('dragover', (ev) => ev.preventDefault());
+            window.addEventListener('drop', (ev) => {
+                ev.preventDefault();
+                const file = ev.dataTransfer.files[0];
+                if (!file) return;
+                if (file.type.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a|aac|opus)$/i.test(file.name)) {
+                    this.startAudioFile(file);
+                } else if (file.name.endsWith('.json')) {
+                    this.loadSessionFile(file);
+                } else {
+                    this.toast(`Don't know what to do with ${file.name}`, 'error');
+                }
+            });
+        },
+
+        // ---- sync -------------------------------------------------------------------
+
+        sync() {
+            const e = this.e;
+            const deck = e.deck();
+            const deckLetter = e.activeDeck ? 'B' : 'A';
+
+            // scene browser follows the edit deck's bank
+            const bank = CLIFT.catalog.bankIndexOf(deck.sceneId);
+            if (bank !== this.lastDeckBank || e.activeDeck !== this.lastActiveDeck) {
+                this.browseBank = bank;
+                this.lastDeckBank = bank;
+                this.lastActiveDeck = e.activeDeck;
+            }
+            $('bank-select').value = this.browseBank;
+            this.renderSceneList();
+
+            $('edit-deck-label').textContent = deckLetter;
+            for (const b of $('edit-deck-seg').children) b.classList.toggle('on', Number(b.dataset.deck) === e.activeDeck);
+            for (const which of ['primary', 'secondary']) {
+                const current = which === 'primary' ? deck.primaryColor : deck.secondaryColor;
+                for (const b of $(`${which}-swatches`).children) b.classList.toggle('on', Number(b.dataset.color) === current);
+            }
+            $('gradient-select').value = deck.gradientType;
+            for (const p of ['param1', 'param2', 'param3']) {
+                $(p).value = deck.params[p];
+                $(`${p}-val`).textContent = deck.params[p].toFixed(2);
+            }
+
+            $('effect-select').value = e.currentEffect;
+            $('render-select').value = e.renderMode;
+            $('color-mode-select').value = e.colorMode;
+            setToggle($('color-toggle'), e.colorEnabled);
+            setToggle($('invert-toggle'), e.invertColors);
+
+            const out = CLIFT.output;
+            setToggle($('postfx-toggle'), out.options.enabled, 'Enabled', 'Enable');
+            $('postfx-state').textContent = out.options.enabled ? (out.preset || 'custom') : 'off';
+            $('postfx-state').classList.toggle('on', out.options.enabled);
+            for (const b of $('postfx-presets').children) b.classList.toggle('on', b.dataset.preset === out.preset && out.options.enabled);
+            $('postfx-style').value = out.options.style;
+            for (const key of ['glow', 'glowSize', 'scanlines', 'vignette', 'chroma']) {
+                const input = $(`fx-${key}`);
+                input.value = out.options[key];
+                input.nextElementSibling.textContent = Number(out.options[key]).toFixed(1);
+            }
+
+            $('audio-gain').value = CLIFT.audio.gain;
+            $('audio-gain').nextElementSibling.textContent = CLIFT.audio.gain.toFixed(1);
+
+            if (document.activeElement !== $('bpm-input')) $('bpm-input').value = e.bpm;
+            $('stat-bpm').textContent = e.bpm;
+
+            const auto = CLIFT.automation;
+            setToggle($('auto-toggle'), auto.enabled, 'Auto ON', 'Full Auto');
+            $('auto-state').textContent = auto.enabled ? auto.rate.toLowerCase() : 'off';
+            $('auto-state').classList.toggle('on', auto.enabled);
+            $('badge-auto').hidden = !auto.enabled;
+            $('auto-rate').value = auto.rate;
+            for (const c of $('auto-options').querySelectorAll('input')) c.checked = !!auto.options[c.dataset.opt];
+
+            const resIndex = e.resolutions.findIndex(([w, h]) => w === e.width && h === e.height);
+            $('res-select').value = resIndex;
+            $('stat-res').textContent = `${e.width}×${e.height}`;
+            setToggle($('pause-toggle'), e.paused, 'Paused', 'Pause');
+            $('badge-pause').hidden = !e.paused;
+            setToggle($('record-toggle'), CLIFT.recorder.recording, 'Stop rec', 'Record');
+            $('badge-rec').hidden = !CLIFT.recorder.recording;
+
+            $('mix-select').value = e.mixMode;
+            $('transition-beats').value = e.transitionBeats;
+            for (const i of [0, 1]) {
+                const d = e.decks[i];
+                $(`deck-name-${i}`).textContent = CLIFT.catalog.name(d.sceneId);
+                $(`deck-bank-${i}`).textContent = CLIFT.catalog.allBanks()[CLIFT.catalog.bankIndexOf(d.sceneId)].name;
+                $(`deck-card-${i}`).classList.toggle('editing', i === e.activeDeck);
+            }
+        },
+
+        renderSceneList() {
+            const e = this.e;
+            const query = $('scene-search').value;
+            const ids = query.trim() ? CLIFT.catalog.search(query)
+                : CLIFT.catalog.allBanks()[this.browseBank].ids;
+            const key = `${query}|${this.browseBank}|${ids.length}`;
+            const list = $('scene-list');
+
+            if (key !== this.listKey) {
+                this.listKey = key;
+                const searching = !!query.trim();
+                list.replaceChildren(...ids.map((id, i) => {
+                    const b = document.createElement('button');
+                    b.className = 'scene-item';
+                    b.dataset.id = id;
+                    const num = document.createElement('span');
+                    num.className = 'num';
+                    num.textContent = searching ? id : i + 1;
+                    const nm = document.createElement('span');
+                    nm.className = 'nm';
+                    nm.textContent = CLIFT.catalog.name(id);
+                    b.append(num, nm);
+                    if (searching) {
+                        const hint = document.createElement('span');
+                        hint.className = 'bank-hint';
+                        hint.textContent = CLIFT.catalog.allBanks()[CLIFT.catalog.bankIndexOf(id)].name;
+                        b.appendChild(hint);
+                    }
+                    b.title = `#${id} - ${i < 10 && !searching ? `key ${(i + 1) % 10}, ` : ''}shift+click for the other deck`;
+                    return b;
+                }));
+            }
+
+            for (const item of list.children) {
+                const id = Number(item.dataset.id);
+                item.classList.toggle('broken', CLIFT.catalog.broken.has(id));
+                for (const [i, cls] of [[0, 'tag-a'], [1, 'tag-b']]) {
+                    let tag = item.querySelector('.' + cls);
+                    const on = e.decks[i].sceneId === id;
+                    if (on && !tag) {
+                        tag = document.createElement('span');
+                        tag.className = 'tag ' + cls;
+                        tag.textContent = i ? 'B' : 'A';
+                        item.insertBefore(tag, item.querySelector('.bank-hint'));
+                    } else if (!on && tag) {
+                        tag.remove();
+                    }
+                }
+            }
+        },
+
+        syncCrossfader(v) {
+            const xf = $('crossfader');
+            if (document.activeElement !== xf) xf.value = Math.round(v * 1000);
+            $('deck-card-0').classList.toggle('on-air', v < 1);
+            $('deck-card-1').classList.toggle('on-air', v > 0);
+        },
+
+        syncAudio() {
+            const audio = CLIFT.audio;
+            for (const b of $('audio-source-seg').children) b.classList.toggle('on', b.dataset.source === audio.source);
+            $('audio-state').textContent = audio.source === 'mic' ? 'live' : audio.source;
+            $('audio-state').classList.toggle('on', audio.live);
+            $('stat-audio').textContent = audio.describe();
+            if (audio.source !== 'mic') $('audio-device').hidden = true;
+        },
+
+        syncWs(status) {
+            const btn = $('ws-toggle');
+            btn.textContent = status === 'online' ? 'Online' : status === 'connecting' ? 'Connecting…' : 'Connect';
+            btn.classList.toggle('on', status === 'online');
+        },
+
+        // ---- per-frame --------------------------------------------------------------
+
+        onFrame() {
+            const e = this.e;
+            if (document.body.classList.contains('hide-ui')) return;
+            const a = e.audioFrame;
+            if (a) {
+                const b = a.bands;
+                const levels = [b.bass, b.lowMid, b.mid, b.highMid, b.treble, a.beat.intensity];
+                for (let i = 0; i < 6; i++) {
+                    this.meterBars[i].style.transform = `scaleY(${Math.max(0.03, Math.min(1, levels[i]))})`;
+                }
+            }
+
+            const dots = $('beat-dots').children;
+            const beatIndex = e.clock.count % 4;
+            const lit = e.clock.phase < 0.25;
+            for (let i = 0; i < 4; i++) dots[i].classList.toggle('on', lit && i === beatIndex);
+
+            if (e.frameCount % 2 === 0) {
+                this.drawPreview(0, e.bufferA, e.colorBufferA);
+                this.drawPreview(1, e.bufferB, e.colorBufferB);
+            }
+
+            if (e.frameCount % 15 === 0) {
+                $('stat-fps').textContent = `${e.fps} fps`;
+                $('detected-bpm').textContent = CLIFT.audio.detectedBPM || '--';
+                if (CLIFT.recorder.recording) {
+                    const s = Math.floor(CLIFT.recorder.elapsed);
+                    $('rec-time').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+                }
+            }
+        },
+
+        drawPreview(i, buffer, colors) {
+            const ctx = this.previewCtx[i];
+            const cw = ctx.canvas.width / this.e.width;
+            const ch = ctx.canvas.height / this.e.height;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            let lastColor = -1;
+            for (let y = 0; y < this.e.height; y++) {
+                const row = buffer[y], crow = colors[y];
+                for (let x = 0; x < this.e.width; x++) {
+                    const c = row[x];
+                    if (!c || c === ' ') continue;
+                    if (crow[x] !== lastColor) {
+                        lastColor = crow[x];
+                        const pair = CLIFT.palette.pair(lastColor);
+                        ctx.fillStyle = pair.fg === '#000000' ? pair.bg : pair.fg;
+                    }
+                    ctx.fillRect(x * cw, y * ch, Math.max(1, cw - 0.4), Math.max(1, ch - 0.6));
+                }
+            }
+        }
+    };
+
+    CLIFT.ui = ui;
+})();

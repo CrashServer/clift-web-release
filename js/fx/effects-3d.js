@@ -296,4 +296,4 @@ CLIFTEffects['3D Tunnel'] = function(buffer, width, height, params) {
     });
 };
 
-console.log('CLIFT 3D Effects loaded - 4 new effects available (fixed)');
+CLIFT.log('CLIFT 3D Effects loaded - 4 new effects available (fixed)');

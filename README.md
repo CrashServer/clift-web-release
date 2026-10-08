@@ -15,22 +15,11 @@
 
 **Browser-based ASCII Art VJ Software**
 
-*A project by [crashserver.fr](https://crashserver.fr)*
-* TRY IT LIVE [HERE](https://crashserver.fr/apps/clift-web/)*
----
+*A project by [crashserver.fr](https://crashserver.fr)* · TRY IT LIVE [HERE](https://crashserver.fr/apps/clift-web/)
 
-## STATUS: ALPHA 
-
-So basically this is the js port of :
-https://github.com/CrashServer/clift_terminal
-
-
-⚠️ **This software is in active development.** 
-Code is messed up. I might correct and make it usable. emphasis on might. 
----
+The JS port of [CLIFT terminal](https://github.com/CrashServer/clift_terminal).
 
 If you want to support : https://coff.ee/crashserver
-
 
 ```
     ╔══════════════════════════════════════╗
@@ -39,167 +28,149 @@ If you want to support : https://coff.ee/crashserver
     ╚══════════════════════════════════════╝
 ```
 
+## ▶ Running it
+
+Open `index.html` in a browser. That's it: no server, no build step, no dependencies.
+It also works when served from any static host.
+
+Firefox and Chromium-based browsers are both supported. Microphone input asks for
+permission and also works when the page is opened from disk (`file://`).
 
 ## 🔥 Features
 
-### **Visual Engine**
-- **180+ ASCII Art Scenes** - From geometric patterns to glitch effects
-- **9 Experimental Render Modes** - Including 3D ASCII with depth mapping
-- **17 Post-Processing Effects** - Blur, glitch, emboss, and more
-- **Dual Deck System** - VJ workflow with crossfader mixing
-- **Real-time Audio Visualization** - Microphone input with beat detection
-- **glowy stuff**
+- **235 ASCII scenes** in 24 named banks, with a searchable scene browser
+- **Dual decks + crossfader** with live mini-previews of both decks, 8 mix patterns
+  and beat-length transitions (1-16 beats)
+- **26 ASCII effects** (glitch, mirror, 3D tunnel, dither...) and **12 experimental
+  render modes** (surface, particles, splines, 3D city, plasma, terminal...)
+- **Colors**: 10 color pairs (incl. inverse pairs), 10 gradients, Full / Mono / Accent modes, FG/BG invert
+- **Post-FX** (WebGL): CRT tint, glow, scanlines, vignette, chromatic offset + presets
+- **Audio**: demo signal (no permission needed), live input with device selection,
+  or play an audio file (drop it onto the page). 64-band log spectrum, 5 bands,
+  beat detection and tempo estimation
+- **Tempo**: BPM clock, tap tempo (re-syncs the downbeat), sync to detected BPM
+- **Full Auto**: beat-synced scene / effect / color changes; new scenes are always
+  cued on the off-air deck and crossfaded in
+- **Scene params**: 3 per-deck knobs that drive speed / density on scenes that use them
+- **Sessions**: autosaved locally (a reload brings you back), export / import JSON
+  (old CLIFT Web session files load too)
+- **Recording**: records the visible output (post-FX and render modes included) to
+  WebM, with sound when a live input or audio file is playing
+- **Editors**: code editor and node editor; saved scenes land in a "Custom" bank and
+  persist across reloads
+- **Live coding link**: WebSocket client for the CLIFT live-coding server (code overlay
+  + remote scene / effect / BPM control)
 
-###  EXPERIMENTAL :  **Render Modes**
-- **ASCII** - Classic terminal-style rendering
-- **Surface** - Height-mapped 3D surfaces
-- **Mesh** - Connected wireframe rendering  
-- **Particles** - Dynamic particle systems
-- **Lines** - Flowing line art
-- **Dots** - Pointillism effects
-- **Waves** - Fluid wave simulations
-- **Plasma** - Retro plasma effects
-- **3D ASCII** - Characters with Z-depth and connections ✨
+## 🎛️ Controls
 
-### **Audio Integration**
-- **Microphone Input** - Real-time audio analysis
-- **4-Band FFT** - Bass, Low, Mid, High frequency visualization
-- **Beat Detection** - Automatic rhythm analysis
+Press **H** in the app for the full list. The essentials:
 
----
+| Key | Action | | Key | Action |
+|---|---|---|---|---|
+| ← → | previous / next scene | | Space | pause |
+| ↑ ↓ | previous / next bank | | T | transition to the other deck |
+| 1 … 0 | scene 1-10 of the bank | | Z / B / V | crossfader A / middle / B |
+| Tab | switch edit deck | | M | Full Auto |
+| E / Shift+E | next / previous effect | | R / Shift+R | render mode / back to ASCII |
+| N / J / K | primary / secondary color / gradient | | P / D / S | post-FX / preset / tint |
+| A | audio input on/off | | Q | tap tempo |
+| O | record | | F | fullscreen |
+| U | hide / show the interface | | W | live-coding server |
 
-## 🌐 Browser Compatibility
-### **Recommended: Firefox** 🦊
-CLIFT Web is optimized for **Mozilla Firefox** and provides the best performance and compatibility. It should maybe work on **chrome** but might not. Especially audio reactivity. 
+Digits use the physical number keys, so they also work on AZERTY keyboards without Shift.
 
-## 🎛️ Controls & Usage
-### **Basic VJ Workflow**
-1. **Enable Audio** - Click the microphone button (allow browser permissions) - important !!!
-2. **Select Scenes** - Use category/scene controls for each deck
-3. **Choose Render Mode** - Toggle through 9 different rendering styles
-4. **Mix Decks** - Use crossfader or trigger transitions
-5. **Apply Effects** - Add PostFX for glow and color grading
+Mouse: click a scene to load it into the edit deck, Shift+click to load it into the
+other deck. Click a deck card in the mixer to edit that deck.
 
-### **Keyboard Shortcuts**
-- **Space** - Play/Pause
-- **T** - Trigger transition
-- **A** - Toggle audio
-- **F** - Toggle fullscreen
-- **R** - Start/stop recording
-
-### **Full Auto Mode**
-Enables a random thing that goes exploring all possibilies. 
-- **Scenes** - Automatic scene changes
-- **Effects** - Cycling through visual effects  
-- **Crossfade** - Animated deck transitions
-- **PostFX** - Color and glow automation
-- **Experimental** - Render mode cycling
-- **Colors** - Palette automation
-- **Subdivision** - Timing control (1-16 beats)
-
----
 ## 🛠️ Architecture
 
-### **Core Technology**
-- **Pure JavaScript** - No frameworks, no dependencies
-- **Web Audio API** - Real-time audio processing
-- **Canvas 2D** - High-performance ASCII rendering
-- **WebGL PostFX** - Hardware-accelerated effects
-- **MediaRecorder** - Built-in video recording ** more or less reliable
+Plain JavaScript loaded with classic `<script>` tags (ES modules are blocked on
+`file://`). Everything hangs off one global namespace, `CLIFT`.
 
-### **File Structure**
 ```
-clift-web/
-├── index.html              # Main application
-├── clift-engine.js          # Core rendering engine
-├── clift-scenes-final.js    # 190+ scene definitions
-├── clift-effects.js         # Post-processing effects
-├── clift-audio-enhanced.js  # Audio visualization
-├── clift-postfx-clean.js    # WebGL post-effects
-├── clift-recorder.js        # Video recording
-├── clift-websocket.js       # Live coding support
-└── clift-mobile.js          # Mobile optimizations
+index.html               markup + script order
+css/clift.css            interface styles
+js/
+├── main.js              boot: wires modules, restores the session, starts the loop
+├── core/
+│   ├── clift.js         namespace, event bus, logging, storage helpers
+│   ├── palette.js       color pairs + gradient functions
+│   ├── catalog-data.js  bank + scene names
+│   ├── catalog.js       scene lookup, stepping, search
+│   ├── custom-scenes.js editor-made scenes (ids 1000+), persisted in localStorage
+│   ├── engine.js        BPM clock, decks, mixing, effects, ASCII renderer
+│   ├── render-modes.js  experimental render modes
+│   ├── automation.js    Full Auto
+│   └── session.js       snapshot / restore / autosave / file import-export
+├── audio/
+│   ├── audio.js         sources (demo / input / file), spectrum, bands, beats
+│   └── analysis.js      advanced features (spectral shape, buildup/drop...)
+├── fx/                  ASCII effects + post-FX output stage (postfx.js)
+├── scenes/              one file per bank (_helpers.js loads first)
+├── lib/                 3D ASCII renderer used by the 3D scenes
+├── io/                  recorder, WebSocket client
+├── editors/             code editor, node editor
+└── ui/                  controls.js (panel + mixer), keyboard.js (keymap + help)
 ```
 
+Each frame: advance the BPM clock → analyse audio → render deck A and B into
+character buffers → color them → mix through the crossfader → apply the ASCII effect →
+draw (ASCII or a render mode) → output stage (post-FX when enabled).
 
-## 🎨 Scene Development
-### **Adding Custom Scenes**
-Scenes follow this pattern:
+Open with `index.html?debug` to get verbose logs in the console.
+
+## 🎨 Writing scenes
+
+A scene is a function that fills a character buffer:
+
 ```javascript
-CLIFTScenes[sceneNumber] = function(buffer, width, height, time, params) {
-    // buffer: 2D array of characters [y][x]
-    // width, height: Display dimensions  
-    // time: Milliseconds since start
-    // params: { audioData, beatPhase, bpm, deckParams, ... }
-    
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            // Generate ASCII character based on position and time
-            buffer[y][x] = getCharacterForPosition(x, y, time);
-        }
-    }
+CLIFTScenes[300] = function (buffer, width, height, time, params) {
+    // buffer[y][x] = single character, cleared to ' ' before every call
+    // time: milliseconds (pauses with the app)
+    const bass = params.audioInfo.bands.bass;      // 0..1 (also lowMid, mid, highMid, treble)
+    const spectrum = params.audio;                 // Float32Array(64), log-spaced, 0..1
+    const beat = params.audioInfo.beat.detected;   // true on detected beats
+    const phase = params.beatPhase;                // 0..1 position in the current beat (BPM clock)
+    const speed = params.param1;                   // deck knob, 0..1 (default 0.5)
+
+    const y = Math.floor(height / 2);
+    const len = Math.floor(bass * width);
+    for (let x = 0; x < len; x++) buffer[y][x] = beat ? '█' : '▓';
 };
 ```
 
-### **Audio-Reactive Parameters**
-```javascript
-// Access audio data
-const bassLevel = params.audioData.bass;    // 0.0 - 1.0
-const beatPhase = params.beatPhase;         // 0.0 - 1.0 (beat cycle)
-const bpm = params.bpm;                     // Beats per minute
+To ship it with the app, add it to a file in `js/scenes/` (or a new file plus a
+`<script>` tag in `index.html`) and give it a bank entry and name in
+`js/core/catalog-data.js`. For quick experiments use the code editor: **Session &
+tools → Code editor** opens the current scene as an editable copy; **Save** puts it
+in the Custom bank.
 
-// Beat detection
-if (beatPhase < 0.1) {
-    // On beat - trigger effects
-}
+A scene that throws is disabled and shown as crashed (marked red in the browser)
+instead of stopping the show; the error is printed in the console.
+
+## 🔌 Live-coding WebSocket
+
+Default `ws://localhost:7745` (editable in the panel, saved locally). Messages are JSON:
+
+```javascript
+{ player: 0, code: '...', executed: '...', active: true, duration: 5000 }  // code overlay
+{ type: 'scene_change', deck: 0, sceneId: 42 }
+{ type: 'effect_change', effect: 'Glitch' }      // name or index
+{ type: 'bpm_change', bpm: 128 }
 ```
 
----
-## 🌊 What's Coming
+Local scene / effect / BPM changes are sent with the same shapes.
 
-- **Better Recording** - yeah it sucks for the moment
-- **MIDI Controller Support** - Hardware VJ controller integration
-- **Advanced Scenes** - More complex visualizations
-- **Mobile App** - Dedicated mobile interface
-- **WebSocket** - it already more or less there, for live coding text support for example
+## 🐛 Known limits
 
-## 🐛 Known Issues
-A lot atm. 
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please:
-
-1. **Fork** the repository
-2. **Create** a feature branch
-3. **Test** in Firefox thoroughly  
-4. **Submit** a pull request
-
-### **Areas for Contribution**
-- New ASCII art scenes
-- Performance optimizations
-- Mobile compatibility improvements
-- Bug fixes and testing
-
----
+- Experimental render modes and post-FX are GPU-heavy; without hardware acceleration
+  some modes drop to low frame rates.
+- Recording uses MediaRecorder (WebM); quality depends on the browser.
 
 ## 📜 License
 
-**MIT License** - See LICENSE file for details.
-
----
-
-## 🔗 Links
-
-- **Project**: [crashserver.fr](https://crashserver.fr)
-- **Issues**: Report bugs and feature requests
-- **Wiki**: Detailed documentation and tutorials
-
----
+**MIT License**
 
 ## 💫 Credits
 
-**Developed by the crashserver.fr team**
-**Happy VJing!** 🎵✨
+**Developed by the crashserver.fr team** · **Happy VJing!** 🎵✨

@@ -197,7 +197,7 @@ window.CLIFTNodeEditor = {
             properties: { value: 10.0 },
             func: (inputs, time, params, node) => {
                 const value = node.properties.value !== undefined ? node.properties.value : 10.0;
-                console.log(`Constant: ${value}`);
+                CLIFT.log(`Constant: ${value}`);
                 return { value: value };
             },
             generateCode: (node, connections) => {
@@ -275,7 +275,7 @@ window.CLIFTNodeEditor = {
                 const radius = Math.max(1, inputs.radius !== undefined ? inputs.radius : 5);
                 const char = node.properties.char || '*';
                 
-                console.log(`Circle: center(${centerX}, ${centerY}), radius=${radius}, char=${char}`);
+                CLIFT.log(`Circle: center(${centerX}, ${centerY}), radius=${radius}, char=${char}`);
                 
                 for (let y = 0; y < params.height; y++) {
                     for (let x = 0; x < params.width; x++) {
@@ -548,37 +548,37 @@ window.CLIFTNodeEditor = {
     
     // Initialize the node editor
     init: function() {
-        console.log('Starting node editor initialization...');
+        CLIFT.log('Starting node editor initialization...');
         
         try {
             this.createCustomScenesStorage();
-            console.log('Custom scenes storage created');
+            CLIFT.log('Custom scenes storage created');
             
             this.createEditorHTML();
-            console.log('Editor HTML created');
+            CLIFT.log('Editor HTML created');
             
             // Use setTimeout to ensure DOM is ready
             setTimeout(() => {
-                console.log('Setting up node editor components after DOM ready...');
+                CLIFT.log('Setting up node editor components after DOM ready...');
                 
                 try {
                     this.setupCanvas();
-                    console.log('Main canvas setup complete');
+                    CLIFT.log('Main canvas setup complete');
                     
                     this.setupPreviewCanvas();
-                    console.log('Preview canvas setup complete');
+                    CLIFT.log('Preview canvas setup complete');
                     
                     this.setupEventListeners();
-                    console.log('Event listeners setup complete');
+                    CLIFT.log('Event listeners setup complete');
                     
                     this.setupCodeSync();
-                    console.log('Code sync setup complete');
+                    CLIFT.log('Code sync setup complete');
                     
                     // Start the render loop
                     this.render();
-                    console.log('Render loop started');
+                    CLIFT.log('Render loop started');
                     
-                    console.log('Node editor initialization complete successfully');
+                    CLIFT.log('Node editor initialization complete successfully');
                 } catch (setupError) {
                     console.error('Error during node editor component setup:', setupError);
                 }
@@ -690,12 +690,12 @@ window.CLIFTNodeEditor = {
                                 </div>
                                 
                                 <div class="code-editor-main">
-                                    <textarea id="scene-code" class="code-textarea" placeholder="Generated code will appear here..."></textarea>
+                                    <textarea id="node-code" class="code-textarea" placeholder="Generated code will appear here..."></textarea>
                                 </div>
                                 
                                 <div class="code-editor-controls">
                                     <div class="scene-info-inline">
-                                        <label>ID: <input type="number" id="code-scene-id" min="200" value="200" style="width: 60px;"></label>
+                                        <label>ID: <input type="number" id="code-scene-id" min="1000" value="1000" style="width: 60px;"></label>
                                         <label>Name: <input type="text" id="code-scene-name" placeholder="Node Scene" style="width: 120px;"></label>
                                     </div>
                                     <div class="code-actions">
@@ -740,55 +740,6 @@ window.CLIFTNodeEditor = {
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Code Editor Tab Content -->
-                        <div class="editor-tab-content" id="code-editor-tab">
-                            <div class="code-editor-sidebar">
-                                <div class="code-scene-info">
-                                    <h3>Scene Info</h3>
-                                    <label>Scene ID: <input type="number" id="code-scene-id" min="200" value="200"></label>
-                                    <label>Name: <input type="text" id="code-scene-name" placeholder="My Custom Scene"></label>
-                                </div>
-                                
-                                <div class="code-templates">
-                                    <h4>Templates</h4>
-                                    <button class="code-template-btn" data-template="basic">Basic Scene</button>
-                                    <button class="code-template-btn" data-template="audio-reactive">Audio Reactive</button>
-                                    <button class="code-template-btn" data-template="tunnel">3D Tunnel</button>
-                                    <button class="code-template-btn" data-template="plasma">Plasma Effect</button>
-                                    <button class="code-template-btn" data-template="mandelbrot">Mandelbrot</button>
-                                </div>
-                                
-                                <div class="code-actions">
-                                    <button id="code-test-scene" class="btn btn-primary">Test Scene</button>
-                                    <button id="code-save-scene" class="btn btn-success">Save Scene</button>
-                                    <button id="code-clear" class="btn">Clear Code</button>
-                                </div>
-                            </div>
-                            
-                            <div class="code-editor-main">
-                                <div class="code-editor-layout">
-                                    <div class="code-area">
-                                        <h3>Scene Code</h3>
-                                        <textarea id="scene-code" placeholder="Write your scene function here..."></textarea>
-                                    </div>
-                                    
-                                    <div class="code-preview-section">
-                                        <h3>Preview</h3>
-                                        <div class="preview-container">
-                                            <canvas id="code-preview" width="400" height="150"></canvas>
-                                            <div class="preview-controls">
-                                                <button id="code-preview-play" class="btn">Play</button>
-                                                <button id="code-preview-pause" class="btn">Pause</button>
-                                                <button id="code-preview-reset" class="btn">Reset</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         `;
         
@@ -880,7 +831,10 @@ window.CLIFTNodeEditor = {
                 
                 .node-editor-section {
                     display: flex;
-                    flex-direction: column;
+                    flex-direction: row; /* palette beside the graph, not above it */
+                    min-height: 0;
+                    min-width: 0;
+                    overflow: hidden;
                     border: 1px solid #444;
                     border-radius: 4px;
                     padding: 10px;
@@ -977,6 +931,8 @@ window.CLIFTNodeEditor = {
                     flex: 1;
                     display: flex;
                     flex-direction: column;
+                    min-width: 0;
+                    min-height: 0;
                 }
                 
                 .editor-tab-content {
@@ -994,7 +950,8 @@ window.CLIFTNodeEditor = {
                 }
                 
                 .node-editor-sidebar {
-                    width: 250px;
+                    width: 190px;
+                    flex: none;
                     background: #1a1a1a;
                     padding: 20px;
                     border-right: 1px solid #333;
@@ -1111,6 +1068,8 @@ window.CLIFTNodeEditor = {
                 
                 .graph-section {
                     flex: 1;
+                    min-height: 0;
+                    overflow: auto;
                 }
                 
                 .preview-section {
@@ -1226,7 +1185,7 @@ window.CLIFTNodeEditor = {
                     font-size: 14px;
                 }
                 
-                #scene-code {
+                #node-code {
                     flex: 1;
                     background: #0a0a0a;
                     border: none;
@@ -1350,7 +1309,7 @@ window.CLIFTNodeEditor = {
         this.previewCtx.textBaseline = 'top';
         this.previewCtx.fillStyle = '#0f0';
         
-        console.log('Preview canvas setup:', {
+        CLIFT.log('Preview canvas setup:', {
             width: this.previewCanvas.width,
             height: this.previewCanvas.height,
             canvas: this.previewCanvas,
@@ -1366,8 +1325,8 @@ window.CLIFTNodeEditor = {
             clearBtn: document.getElementById('node-clear-all'),
             testBtn: document.getElementById('node-test-scene'),
             saveBtn: document.getElementById('node-save-scene'),
-            sceneId: document.getElementById('node-scene-id'),
-            sceneName: document.getElementById('node-scene-name'),
+            sceneId: document.getElementById('code-scene-id'),
+            sceneName: document.getElementById('code-scene-name'),
             previewPlay: document.getElementById('node-preview-play'),
             previewPause: document.getElementById('node-preview-pause'),
             previewReset: document.getElementById('node-preview-reset'),
@@ -1378,7 +1337,7 @@ window.CLIFTNodeEditor = {
             codeClearBtn: document.getElementById('code-clear'),
             codeSceneId: document.getElementById('code-scene-id'),
             codeSceneName: document.getElementById('code-scene-name'),
-            sceneCodeTextarea: document.getElementById('scene-code'),
+            sceneCodeTextarea: document.getElementById('node-code'),
             codePreviewPlay: document.getElementById('code-preview-play'),
             codePreviewPause: document.getElementById('code-preview-pause'),
             codePreviewReset: document.getElementById('code-preview-reset')
@@ -1427,21 +1386,21 @@ window.CLIFTNodeEditor = {
             
             if (codeTestBtn) {
                 codeTestBtn.onclick = () => this.testCodeScene();
-                console.log('Code test button connected');
+                CLIFT.log('Code test button connected');
             } else {
                 console.warn('Code test button not found');
             }
             
             if (codeSaveBtn) {
                 codeSaveBtn.onclick = () => this.saveCodeScene();
-                console.log('Code save button connected');
+                CLIFT.log('Code save button connected');
             } else {
                 console.warn('Code save button not found');
             }
             
             if (codeClearBtn) {
                 codeClearBtn.onclick = () => this.clearCode();
-                console.log('Code clear button connected');
+                CLIFT.log('Code clear button connected');
             } else {
                 console.warn('Code clear button not found');
             }
@@ -1449,21 +1408,21 @@ window.CLIFTNodeEditor = {
             // Code preview controls
             if (codePreviewPlay) {
                 codePreviewPlay.onclick = () => this.startCodePreview();
-                console.log('Code preview play button connected');
+                CLIFT.log('Code preview play button connected');
             } else {
                 console.warn('Code preview play button not found');
             }
             
             if (codePreviewPause) {
                 codePreviewPause.onclick = () => this.pauseCodePreview();
-                console.log('Code preview pause button connected');
+                CLIFT.log('Code preview pause button connected');
             } else {
                 console.warn('Code preview pause button not found');
             }
             
             if (codePreviewReset) {
                 codePreviewReset.onclick = () => this.resetCodePreview();
-                console.log('Code preview reset button connected');
+                CLIFT.log('Code preview reset button connected');
             } else {
                 console.warn('Code preview reset button not found');
             }
@@ -1471,7 +1430,7 @@ window.CLIFTNodeEditor = {
             // Code preview controls - moved inside setTimeout to access variables
             if (codePreviewPlay) {
                 codePreviewPlay.onclick = () => {
-                    console.log('Code preview play button clicked');
+                    CLIFT.log('Code preview play button clicked');
                     const success = this.startCodePreview();
                     if (!success) {
                         console.error('Failed to start code preview from button click');
@@ -1483,7 +1442,7 @@ window.CLIFTNodeEditor = {
             
             if (codePreviewPause) {
                 codePreviewPause.onclick = () => {
-                    console.log('Code preview pause button clicked');
+                    CLIFT.log('Code preview pause button clicked');
                     this.pauseCodePreview();
                 };
             } else {
@@ -1492,7 +1451,7 @@ window.CLIFTNodeEditor = {
             
             if (codePreviewReset) {
                 codePreviewReset.onclick = () => {
-                    console.log('Code preview reset button clicked');
+                    CLIFT.log('Code preview reset button clicked');
                     this.resetCodePreview();
                 };
             } else {
@@ -1533,6 +1492,8 @@ window.CLIFTNodeEditor = {
     open: function() {
         this.isOpen = true;
         document.getElementById('node-editor-overlay').style.display = 'flex';
+        // Never default to an id that is already taken (saving would overwrite it).
+        document.getElementById('code-scene-id').value = CLIFT.custom.nextFreeId();
         
         // Ensure preview canvas is set up
         this.setupPreviewCanvas();
@@ -1557,7 +1518,7 @@ window.CLIFTNodeEditor = {
     createDefaultScene: function() {
         this.clearAllNodes();
         
-        console.log('Creating default scene...');
+        CLIFT.log('Creating default scene...');
         
         // Create a simple animated circle that works
         const timeNode = this.addNode('time', 50, 100);
@@ -1591,15 +1552,15 @@ window.CLIFTNodeEditor = {
             this.addConnection(posNode.id, 'centerY', circleNode.id, 'centerY');
         }
         
-        console.log('Default scene created with', this.nodes.length, 'nodes and', this.connections.length, 'connections');
-        console.log('Nodes:', this.nodes.map(n => n.type));
-        console.log('Connections:', this.connections);
+        CLIFT.log('Default scene created with', this.nodes.length, 'nodes and', this.connections.length, 'connections');
+        CLIFT.log('Nodes:', this.nodes.map(n => n.type));
+        CLIFT.log('Connections:', this.connections);
     },
     
     // Load a template scene
     loadTemplate: function(templateName) {
         this.clearAllNodes();
-        console.log('Loading template:', templateName);
+        CLIFT.log('Loading template:', templateName);
         
         switch (templateName) {
             case 'circle':
@@ -1740,7 +1701,7 @@ window.CLIFTNodeEditor = {
     
     createTextTemplate: function() {
         // Moving text display
-        console.log('Text template - would need a text node type');
+        CLIFT.log('Text template - would need a text node type');
         // For now, create a simple moving circle
         this.createCircleTemplate();
     },
@@ -1751,7 +1712,7 @@ window.CLIFTNodeEditor = {
         if (!nodeType) return null;
         
         const node = {
-            id: Date.now() + Math.random(),
+            id: Date.now() * 100 + Math.floor(Math.random() * 100), // integer: ids end up in variable names
             type: type,
             title: nodeType.title,
             x: x - this.panOffset.x,
@@ -1774,7 +1735,7 @@ window.CLIFTNodeEditor = {
         
         // Auto-start audio if audio node is added
         if (type === 'audio' && window.clift && !window.clift.audioEnabled) {
-            console.log('Audio node added - consider enabling audio in the control panel');
+            CLIFT.log('Audio node added - consider enabling audio in the control panel');
             // Don't auto-start audio as it requires user interaction
         }
         
@@ -2049,6 +2010,13 @@ window.CLIFTNodeEditor = {
         }
         
         code += `}`;
+        
+        // Older graphs used fractional ids (e.g. 1791421034885.2312), which are not
+        // valid inside identifiers like time_<id>; make every id identifier-safe.
+        for (const node of this.nodes) {
+            const raw = String(node.id);
+            if (/[^0-9A-Za-z_]/.test(raw)) code = code.split(raw).join(raw.replace(/[^0-9A-Za-z_]/g, '_'));
+        }
         return code;
     },
     
@@ -2080,7 +2048,7 @@ window.CLIFTNodeEditor = {
     
     // Update code editor with generated code
     updateCodeEditor: function() {
-        const codeTextarea = document.getElementById('scene-code');
+        const codeTextarea = document.getElementById('node-code');
         if (codeTextarea) {
             const generatedCode = this.generateCode();
             
@@ -2102,7 +2070,7 @@ window.CLIFTNodeEditor = {
                 sceneNameInput.value = 'Node Graph Scene';
             }
             
-            console.log('Code editor updated with generated code');
+            CLIFT.log('Code editor updated with generated code');
         }
         
         // Also update live scene
@@ -2111,7 +2079,7 @@ window.CLIFTNodeEditor = {
     
     // Setup bidirectional sync between code and nodes
     setupCodeSync: function() {
-        const codeTextarea = document.getElementById('scene-code');
+        const codeTextarea = document.getElementById('node-code');
         const syncStatus = document.getElementById('code-sync-status');
         
         if (codeTextarea && syncStatus) {
@@ -2136,7 +2104,7 @@ window.CLIFTNodeEditor = {
     
     // Try to parse code changes back to nodes (basic implementation)
     tryParseCodeToNodes: function() {
-        console.log('Attempting to parse code changes back to nodes...');
+        CLIFT.log('Attempting to parse code changes back to nodes...');
         // This is a simplified version - could be enhanced with full parsing
         const syncStatus = document.getElementById('code-sync-status');
         if (syncStatus) {
@@ -2147,7 +2115,7 @@ window.CLIFTNodeEditor = {
     
     // Update live scene directly from code editor
     updateLiveSceneFromCode: function() {
-        const codeTextarea = document.getElementById('scene-code');
+        const codeTextarea = document.getElementById('node-code');
         if (codeTextarea && window.CLIFTEngine) {
             try {
                 const sceneFunction = eval(`(${codeTextarea.value})`);
@@ -2155,9 +2123,9 @@ window.CLIFTNodeEditor = {
                 if (!window.CLIFTCustomScenes) {
                     window.CLIFTCustomScenes = {};
                 }
-                window.CLIFTCustomScenes[999] = sceneFunction;
+                CLIFT.custom.setLive(sceneFunction);
                 
-                console.log('Live scene updated from code editor');
+                CLIFT.log('Live scene updated from code editor');
                 
                 const syncStatus = document.getElementById('code-sync-status');
                 if (syncStatus) {
@@ -2165,7 +2133,7 @@ window.CLIFTNodeEditor = {
                     syncStatus.style.color = '#0f0';
                 }
             } catch (e) {
-                console.log('Could not update live scene from code:', e.message);
+                CLIFT.log('Could not update live scene from code:', e.message);
                 
                 const syncStatus = document.getElementById('code-sync-status');
                 if (syncStatus) {
@@ -2190,12 +2158,12 @@ window.CLIFTNodeEditor = {
                     if (!window.CLIFTCustomScenes) {
                         window.CLIFTCustomScenes = {};
                     }
-                    window.CLIFTCustomScenes[999] = sceneFunction;
+                    CLIFT.custom.setLive(sceneFunction);
                 }
                 
-                console.log('Live scene updated from nodes');
+                CLIFT.log('Live scene updated from nodes');
             } catch (e) {
-                console.log('Could not update live scene:', e.message);
+                CLIFT.log('Could not update live scene:', e.message);
             }
         }
     },
@@ -2412,7 +2380,7 @@ window.CLIFTNodeEditor = {
     executeGraph: function(width, height, time, params) {
         // Performance optimized - only log occasionally
         if (time % 1000 === 0) {
-            console.log('Executing graph with', this.nodes.length, 'nodes and', this.connections.length, 'connections');
+            CLIFT.log('Executing graph with', this.nodes.length, 'nodes and', this.connections.length, 'connections');
         }
         
         const buffer = [];
@@ -2439,7 +2407,7 @@ window.CLIFTNodeEditor = {
         const execute = (node) => {
             if (executed.has(node.id)) return;
             
-            console.log(`Executing node: ${node.type} (${node.title})`);
+            CLIFT.log(`Executing node: ${node.type} (${node.title})`);
             
             // Execute dependencies first
             this.connections.forEach(conn => {
@@ -2458,7 +2426,7 @@ window.CLIFTNodeEditor = {
                     const inputNode = this.nodes.find(n => n.id === conn.fromNodeId);
                     if (inputNode && inputNode.values[conn.fromOutput] !== undefined) {
                         inputs[conn.toInput] = inputNode.values[conn.fromOutput];
-                        console.log(`  Input ${conn.toInput} = ${inputNode.values[conn.fromOutput]} from ${inputNode.type}`);
+                        CLIFT.log(`  Input ${conn.toInput} = ${inputNode.values[conn.fromOutput]} from ${inputNode.type}`);
                     }
                 }
             });
@@ -2469,7 +2437,7 @@ window.CLIFTNodeEditor = {
                 try {
                     const outputs = nodeType.func(inputs, time, context.params, node);
                     node.values = { ...node.values, ...outputs };
-                    console.log(`  Outputs:`, outputs);
+                    CLIFT.log(`  Outputs:`, outputs);
                 } catch (e) {
                     console.error(`Error executing node ${node.type}:`, e);
                 }
@@ -2481,102 +2449,69 @@ window.CLIFTNodeEditor = {
         // Execute all nodes
         this.nodes.forEach(execute);
         
-        console.log('Graph execution complete. Buffer has content:', 
+        CLIFT.log('Graph execution complete. Buffer has content:', 
                    buffer.some(row => row.some(char => char !== ' ')));
         
         return buffer;
     },
     
-    // Test scene
+    // Run the node graph on the edit deck in the "Editor Live" slot.
     testScene: function() {
-        const sceneId = parseInt(document.getElementById('node-scene-id').value);
-        
-        // Generate scene function from node graph
-        const sceneFunction = (buffer, width, height, time, params) => {
-            const result = this.executeGraph(width, height, time, params);
-            
-            // Copy result to buffer
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    buffer[y][x] = result[y][x];
-                }
-            }
-        };
-        
-        // Test the scene
-        if (window.clift) {
-            const originalScene = window.CLIFTCustomScenes[sceneId];
-            window.CLIFTCustomScenes[sceneId] = sceneFunction;
-            
-            // Switch to test scene
-            window.clift.selectCategory(Math.floor(sceneId / 10));
-            window.clift.selectDeck(0);
-            window.clift.decks[0].scene = sceneId % 10;
-            
-            console.log(`Testing custom scene ${sceneId}`);
-            
-            // Restore after 10 seconds
-            setTimeout(() => {
-                if (originalScene) {
-                    window.CLIFTCustomScenes[sceneId] = originalScene;
-                } else {
-                    delete window.CLIFTCustomScenes[sceneId];
-                }
-            }, 10000);
+        try {
+            CLIFT.custom.setLive(CLIFT.custom.compile(this.generateCode()));
+            CLIFT.catalog.broken.delete(CLIFT.custom.LIVE_ID);
+            window.clift.setScene(CLIFT.custom.LIVE_ID);
+            CLIFT.ui.toast('Node scene running on the edit deck');
+        } catch (e) {
+            CLIFT.ui.toast(`Node graph error: ${e.message}`, 'error', 4000);
         }
     },
     
-    // Save scene
+    // Save the node graph as a custom scene (code + graph so it can be edited later).
     saveScene: function() {
-        const sceneId = parseInt(document.getElementById('node-scene-id').value);
-        const sceneName = document.getElementById('node-scene-name').value || `Custom Scene ${sceneId}`;
-        
-        // Generate scene function from node graph
-        const sceneFunction = (buffer, width, height, time, params) => {
-            const result = this.executeGraph(width, height, time, params);
-            
-            // Copy result to buffer
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    buffer[y][x] = result[y][x];
-                }
-            }
-        };
-        
-        // Save to custom scenes
-        window.CLIFTCustomScenes[sceneId] = sceneFunction;
-        
-        // Save the node graph for later editing
-        if (!window.CLIFTCustomSceneGraphs) {
-            window.CLIFTCustomSceneGraphs = {};
+        this.saveCustom(this.generateCode(), 'node');
+    },
+
+    saveCustom: function(code, type) {
+        const idInput = document.getElementById('code-scene-id');
+        const name = document.getElementById('code-scene-name').value.trim();
+        try {
+            const id = CLIFT.custom.save(parseInt(idInput.value, 10), {
+                name: name || (type === 'node' ? 'Node scene' : 'Code scene'),
+                type,
+                code,
+                nodes: type === 'node' ? JSON.parse(JSON.stringify(this.nodes)) : undefined,
+                connections: type === 'node' ? JSON.parse(JSON.stringify(this.connections)) : undefined
+            });
+            idInput.value = id;
+            CLIFT.catalog.broken.delete(id);
+            window.clift.setScene(id);
+            CLIFT.ui.toast(`Saved "${CLIFT.catalog.name(id)}" to the Custom bank (#${id})`);
+        } catch (e) {
+            CLIFT.ui.toast(`Cannot save - code error: ${e.message}`, 'error', 4000);
         }
-        window.CLIFTCustomSceneGraphs[sceneId] = {
-            nodes: JSON.parse(JSON.stringify(this.nodes)),
-            connections: JSON.parse(JSON.stringify(this.connections)),
-            name: sceneName
-        };
-        
-        // Save to localStorage using the same format as the code editor
-        const savedScenes = JSON.parse(localStorage.getItem('clift-custom-scenes') || '{}');
-        savedScenes[sceneId] = {
-            name: sceneName,
-            nodes: JSON.parse(JSON.stringify(this.nodes)),
-            connections: JSON.parse(JSON.stringify(this.connections)),
-            type: 'node'
-        };
-        localStorage.setItem('clift-custom-scenes', JSON.stringify(savedScenes));
-        
-        console.log(`Custom scene ${sceneId} saved: ${sceneName}`);
+    },
+
+    // Code for a stored graph without disturbing the graph currently being edited.
+    codeForGraph: function(nodes, connections) {
+        const saved = [this.nodes, this.connections];
+        try {
+            this.nodes = nodes;
+            this.connections = connections;
+            return this.generateCode();
+        } finally {
+            [this.nodes, this.connections] = saved;
+        }
     },
     
     // Preview functions
     startPreview: function() {
-        console.log('Starting preview with nodes:', this.nodes.map(n => n.type));
-        console.log('Connections:', this.connections);
+        CLIFT.log('Starting preview with nodes:', this.nodes.map(n => n.type));
+        CLIFT.log('Connections:', this.connections);
         
         // Always ensure preview canvas is properly set up
         if (!this.previewCanvas || !this.previewCtx) {
-            console.log('Setting up preview canvas...');
+            CLIFT.log('Setting up preview canvas...');
             this.setupPreviewCanvas();
         }
         
@@ -2610,14 +2545,14 @@ window.CLIFTNodeEditor = {
             
             // Debug logging reduced to avoid performance issues
             if (this.previewTime % 1000 === 0) {
-                console.log('Preview status - nodes:', this.nodes.length, 'connections:', this.connections.length);
+                CLIFT.log('Preview status - nodes:', this.nodes.length, 'connections:', this.connections.length);
             }
             
             let buffer;
             
             if (this.nodes.length === 0) {
                 // Fallback: create a test pattern if no nodes
-                console.log('No nodes, creating test pattern');
+                CLIFT.log('No nodes, creating test pattern');
                 buffer = [];
                 for (let y = 0; y < height; y++) {
                     buffer[y] = new Array(width).fill(' ');
@@ -2678,7 +2613,7 @@ window.CLIFTNodeEditor = {
             
             // Only log occasionally to avoid performance issues
             if (this.previewTime % 1000 === 0) {
-                console.log(`Rendered ${charCount} characters to preview`);
+                CLIFT.log(`Rendered ${charCount} characters to preview`);
             }
             
             this.previewTime += 50;
@@ -2825,13 +2760,13 @@ window.CLIFTNodeEditor = {
             }, 100);
         } else if (tabName === 'code') {
             setTimeout(() => {
-                console.log('Switching to code tab, setting up canvas...');
+                CLIFT.log('Switching to code tab, setting up canvas...');
                 const setupSuccess = this.setupCodePreviewCanvas();
                 if (!setupSuccess) {
                     console.error('Failed to setup code preview canvas when switching to code tab');
                     // Try again after a longer delay
                     setTimeout(() => {
-                        console.log('Retrying code preview canvas setup...');
+                        CLIFT.log('Retrying code preview canvas setup...');
                         this.setupCodePreviewCanvas();
                     }, 500);
                 }
@@ -2841,24 +2776,24 @@ window.CLIFTNodeEditor = {
     
     // Code editor canvas setup
     setupCodePreviewCanvas: function() {
-        console.log('Setting up code preview canvas...');
+        CLIFT.log('Setting up code preview canvas...');
         
         // Check if the code editor tab is currently active
         const codeEditorTab = document.getElementById('code-editor-tab');
         const isCodeTabActive = codeEditorTab && codeEditorTab.classList.contains('active');
-        console.log('Code tab active:', isCodeTabActive);
+        CLIFT.log('Code tab active:', isCodeTabActive);
         
         // Try to get the canvas element
         this.codePreviewCanvas = document.getElementById('code-preview');
         
         if (!this.codePreviewCanvas) {
             console.error('Code preview canvas element not found! DOM element missing.');
-            console.log('Available canvas elements:', 
+            CLIFT.log('Available canvas elements:', 
                 Array.from(document.querySelectorAll('canvas')).map(c => c.id));
             return false;
         }
         
-        console.log('Code preview canvas found:', {
+        CLIFT.log('Code preview canvas found:', {
             id: this.codePreviewCanvas.id,
             offsetWidth: this.codePreviewCanvas.offsetWidth,
             offsetHeight: this.codePreviewCanvas.offsetHeight,
@@ -2876,13 +2811,13 @@ window.CLIFTNodeEditor = {
                 return false;
             }
             
-            console.log('2D context obtained successfully');
+            CLIFT.log('2D context obtained successfully');
             
             // Set canvas dimensions
             this.codePreviewCanvas.width = 400;
             this.codePreviewCanvas.height = 150;
             
-            console.log('Canvas dimensions set:', {
+            CLIFT.log('Canvas dimensions set:', {
                 width: this.codePreviewCanvas.width,
                 height: this.codePreviewCanvas.height
             });
@@ -2892,7 +2827,7 @@ window.CLIFTNodeEditor = {
             this.codePreviewCtx.textBaseline = 'top';
             this.codePreviewCtx.fillStyle = '#0f0';
             
-            console.log('Canvas rendering properties configured:', {
+            CLIFT.log('Canvas rendering properties configured:', {
                 font: this.codePreviewCtx.font,
                 textBaseline: this.codePreviewCtx.textBaseline,
                 fillStyle: this.codePreviewCtx.fillStyle
@@ -2902,13 +2837,13 @@ window.CLIFTNodeEditor = {
             try {
                 this.codePreviewCtx.clearRect(0, 0, this.codePreviewCanvas.width, this.codePreviewCanvas.height);
                 this.codePreviewCtx.fillText('CANVAS READY', 10, 10);
-                console.log('Test render successful - canvas is working properly');
+                CLIFT.log('Test render successful - canvas is working properly');
             } catch (renderError) {
                 console.error('Canvas test render failed:', renderError);
                 return false;
             }
             
-            console.log('Code preview canvas setup completed successfully');
+            CLIFT.log('Code preview canvas setup completed successfully');
             return true;
             
         } catch (error) {
@@ -3042,13 +2977,13 @@ function(buffer, width, height, time, params) {
     },
     
     loadCodeTemplate: function(templateName) {
-        console.log('Loading code template:', templateName);
+        CLIFT.log('Loading code template:', templateName);
         const template = this.codeTemplates[templateName];
         if (template) {
-            const sceneCodeElement = document.getElementById('scene-code');
+            const sceneCodeElement = document.getElementById('node-code');
             if (sceneCodeElement) {
                 sceneCodeElement.value = template;
-                console.log('Template loaded successfully');
+                CLIFT.log('Template loaded successfully');
             } else {
                 console.error('Scene code textarea not found');
             }
@@ -3058,7 +2993,7 @@ function(buffer, width, height, time, params) {
     },
     
     clearCode: function() {
-        document.getElementById('scene-code').value = '';
+        document.getElementById('node-code').value = '';
     },
     
     // Code preview functionality
@@ -3066,11 +3001,11 @@ function(buffer, width, height, time, params) {
     codePreviewTime: 0,
     
     startCodePreview: function() {
-        console.log('Starting code preview...');
+        CLIFT.log('Starting code preview...');
         
         // Check if canvas and context exist
         if (!this.codePreviewCanvas || !this.codePreviewCtx) {
-            console.log('Canvas or context missing, attempting setup...');
+            CLIFT.log('Canvas or context missing, attempting setup...');
             const setupSuccess = this.setupCodePreviewCanvas();
             
             if (!setupSuccess) {
@@ -3091,7 +3026,7 @@ function(buffer, width, height, time, params) {
             console.warn('Code preview canvas is hidden (display: none)');
         }
         
-        console.log('Canvas ready, starting preview with:', {
+        CLIFT.log('Canvas ready, starting preview with:', {
             canvas: !!this.codePreviewCanvas,
             context: !!this.codePreviewCtx,
             width: this.codePreviewCanvas.width,
@@ -3119,7 +3054,7 @@ function(buffer, width, height, time, params) {
     
     runCodePreview: function() {
         if (!this.codePreviewRunning) {
-            console.log('Code preview stopped or not running');
+            CLIFT.log('Code preview stopped or not running');
             return;
         }
         
@@ -3133,7 +3068,7 @@ function(buffer, width, height, time, params) {
         try {
             const width = 50;
             const height = 15;
-            const codeTextarea = document.getElementById('scene-code');
+            const codeTextarea = document.getElementById('node-code');
             
             if (!codeTextarea) {
                 console.error('Scene code textarea not found');
@@ -3176,7 +3111,7 @@ function(buffer, width, height, time, params) {
                 
                 // Log success occasionally to avoid spam
                 if (this.codePreviewTime % 1000 === 0) {
-                    console.log('Code execution successful at time:', this.codePreviewTime);
+                    CLIFT.log('Code execution successful at time:', this.codePreviewTime);
                 }
                 
             } catch (e) {
@@ -3228,7 +3163,7 @@ function(buffer, width, height, time, params) {
                 
                 // Log rendering stats occasionally
                 if (this.codePreviewTime % 1000 === 0) {
-                    console.log(`Rendered ${renderedChars} characters to code preview canvas`);
+                    CLIFT.log(`Rendered ${renderedChars} characters to code preview canvas`);
                 }
                 
             } catch (renderError) {
@@ -3255,80 +3190,20 @@ function(buffer, width, height, time, params) {
         }
     },
     
+    // Run the code panel's function on the edit deck in the "Editor Live" slot.
     testCodeScene: function() {
-        console.log('Testing code scene...');
-        
-        // Validate CLIFT system
-        if (!window.clift) {
-            console.error('CLIFT not loaded');
-            alert('CLIFT system not available. Please ensure the main application is loaded.');
-            return;
-        }
-        
-        const sceneIdElement = document.getElementById('code-scene-id');
-        const sceneNameElement = document.getElementById('code-scene-name');
-        const sceneCodeElement = document.getElementById('scene-code');
-        
-        if (!sceneIdElement || !sceneNameElement || !sceneCodeElement) {
-            console.error('Code editor elements not found');
-            alert('Code editor interface not properly loaded');
-            return;
-        }
-        
-        const sceneId = parseInt(sceneIdElement.value);
-        const sceneName = sceneNameElement.value || `Custom Scene ${sceneId}`;
-        const code = sceneCodeElement.value;
-        
+        const code = document.getElementById('node-code').value;
         if (!code.trim()) {
-            alert('Please enter scene code before testing');
+            CLIFT.ui.toast('Write some scene code first', 'error');
             return;
         }
-        
-        if (isNaN(sceneId) || sceneId < 200) {
-            alert('Please enter a valid scene ID (200 or higher)');
-            return;
-        }
-        
         try {
-            // Test the code by running it once
-            console.log('Evaluating user code...');
-            const sceneFunction = eval(`(${code})`);
-            
-            // Validate that we got a function
-            if (typeof sceneFunction !== 'function') {
-                throw new Error('Code must be a function that takes (buffer, width, height, time, params) as parameters');
-            }
-            
-            const testBuffer = [];
-            for (let y = 0; y < 15; y++) {
-                testBuffer[y] = new Array(50).fill(' ');
-            }
-            
-            console.log('Testing function execution...');
-            sceneFunction(testBuffer, 50, 15, 0, {});
-            
-            // Initialize customScenes if it doesn't exist
-            if (!window.clift.customScenes) {
-                window.clift.customScenes = {};
-            }
-            
-            // If successful, add to CLIFT and test
-            window.clift.customScenes[sceneId] = {
-                name: sceneName,
-                func: sceneFunction
-            };
-            
-            if (typeof window.clift.setScene === 'function') {
-                window.clift.setScene(sceneId);
-                console.log(`Testing code scene: ${sceneName} (ID: ${sceneId})`);
-                alert(`Scene "${sceneName}" loaded and is now running!`);
-            } else {
-                console.warn('window.clift.setScene not available');
-                alert(`Scene "${sceneName}" code validated successfully!`);
-            }
+            CLIFT.custom.setLive(CLIFT.custom.compile(code));
+            CLIFT.catalog.broken.delete(CLIFT.custom.LIVE_ID);
+            window.clift.setScene(CLIFT.custom.LIVE_ID);
+            CLIFT.ui.toast('Code scene running on the edit deck');
         } catch (e) {
-            console.error('Code execution error:', e);
-            alert(`Code error: ${e.message}\n\nPlease check your function syntax and try again.`);
+            CLIFT.ui.toast(`Code error: ${e.message}`, 'error', 4000);
         }
     },
     
@@ -3349,7 +3224,7 @@ function(buffer, width, height, time, params) {
             };
             
             localStorage.setItem('clift-node-session', JSON.stringify(nodeSession));
-            console.log('Node editor session saved');
+            CLIFT.log('Node editor session saved');
             return nodeSession;
         } catch (error) {
             console.error('Failed to save node session:', error);
@@ -3373,7 +3248,7 @@ function(buffer, width, height, time, params) {
                 this.previewTime = nodeSession.previewSettings.time || 0;
             }
             
-            console.log('Node editor session loaded from:', nodeSession.timestamp);
+            CLIFT.log('Node editor session loaded from:', nodeSession.timestamp);
             return true;
         } catch (error) {
             console.error('Failed to load node session:', error);
@@ -3472,79 +3347,12 @@ function(buffer, width, height, time, params) {
     },
 
     saveCodeScene: function() {
-        console.log('Saving code scene...');
-        
-        const sceneIdElement = document.getElementById('code-scene-id');
-        const sceneNameElement = document.getElementById('code-scene-name');
-        const sceneCodeElement = document.getElementById('scene-code');
-        
-        if (!sceneIdElement || !sceneNameElement || !sceneCodeElement) {
-            console.error('Code editor elements not found');
-            alert('Code editor interface not properly loaded');
-            return;
-        }
-        
-        const sceneId = parseInt(sceneIdElement.value);
-        const sceneName = sceneNameElement.value || `Custom Scene ${sceneId}`;
-        const code = sceneCodeElement.value;
-        
+        const code = document.getElementById('node-code').value;
         if (!code.trim()) {
-            alert('Please enter scene code before saving');
+            CLIFT.ui.toast('Write some scene code first', 'error');
             return;
         }
-        
-        if (isNaN(sceneId) || sceneId < 200) {
-            alert('Please enter a valid scene ID (200 or higher)');
-            return;
-        }
-        
-        try {
-            // Test the code before saving
-            console.log('Validating code before saving...');
-            const sceneFunction = eval(`(${code})`);
-            
-            // Validate that we got a function
-            if (typeof sceneFunction !== 'function') {
-                throw new Error('Code must be a function that takes (buffer, width, height, time, params) as parameters');
-            }
-            
-            const testBuffer = [];
-            for (let y = 0; y < 15; y++) {
-                testBuffer[y] = new Array(50).fill(' ');
-            }
-            sceneFunction(testBuffer, 50, 15, 0, {});
-            
-            // Save to localStorage
-            console.log('Saving to localStorage...');
-            const savedScenes = JSON.parse(localStorage.getItem('clift-custom-scenes') || '{}');
-            savedScenes[sceneId] = {
-                name: sceneName,
-                code: code,
-                type: 'code'
-            };
-            localStorage.setItem('clift-custom-scenes', JSON.stringify(savedScenes));
-            
-            // Add to CLIFT runtime if available
-            if (window.clift) {
-                if (!window.clift.customScenes) {
-                    window.clift.customScenes = {};
-                }
-                
-                window.clift.customScenes[sceneId] = {
-                    name: sceneName,
-                    func: sceneFunction
-                };
-                console.log(`Code scene saved to runtime: ${sceneName} (ID: ${sceneId})`);
-            } else {
-                console.warn('CLIFT runtime not available, scene saved to localStorage only');
-            }
-            
-            console.log(`Code scene saved: ${sceneName} (ID: ${sceneId})`);
-            alert(`Scene "${sceneName}" saved successfully!\n\nIt will be available in the custom scenes menu.`);
-        } catch (e) {
-            console.error('Save failed:', e);
-            alert(`Cannot save - code error: ${e.message}\n\nPlease fix the errors and try again.`);
-        }
+        this.saveCustom(code, 'code');
     }
 };
 
@@ -3555,9 +3363,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load node session on startup
     setTimeout(() => {
         if (CLIFTNodeEditor.loadNodeSession()) {
-            console.log('Node editor session restored');
+            CLIFT.log('Node editor session restored');
         }
     }, 1000);
 });
 
-console.log('CLIFT Node Editor loaded');
+CLIFT.log('CLIFT Node Editor loaded');
