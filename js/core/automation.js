@@ -15,10 +15,10 @@
     const { pick, clamp } = CLIFT.util;
 
     const SECTIONS = {
-        break: { target: 0.2, transition: [16, 8], mix: [1, 6], looks: ['clean', 'trails', 'melt'] },
-        groove: { target: 0.5, transition: [8, 4], mix: [0, 2, 3, 4], looks: ['clean', 'trails', 'mirror', 'tiles', 'melt'] },
-        build: { target: 0.65, transition: [4, 2], mix: [5, 6], looks: ['tunnel', 'melt', 'kaleido', 'tiles'] },
-        peak: { target: 0.85, transition: [1, 0], mix: [7, 2], looks: ['kaleido', 'acid', 'storm', 'mosaic', 'tiles', 'tunnel'] }
+        break: { target: 0.2, transition: [16, 8], mix: [1, 6], looks: ['clean', 'trails', 'liquid', 'melt'] },
+        groove: { target: 0.5, transition: [8, 4], mix: [0, 2, 3, 4], looks: ['clean', 'trails', 'mirror', 'panels', 'slicer', 'tiles'] },
+        build: { target: 0.65, transition: [4, 2], mix: [5, 6], looks: ['tunnel', 'slicer', 'glitch', 'liquid', 'melt'] },
+        peak: { target: 0.85, transition: [1, 0], mix: [7, 2], looks: ['storm', 'panels', 'glitch', 'shatter', 'datamosh', 'acid', 'mosaic'] }
     };
 
     // Color pairs that work together, with a "temperature" (0 cool .. 1 hot).
@@ -125,6 +125,16 @@
             bassHist.push(this.beatPeak);
             if (bassHist.length > 8) bassHist.shift();
             const kickGone = bassHist.length >= 2 && Math.max(...bassHist.slice(-2)) < this.peakAvg * 0.5;
+
+            // Fallback for low frame rates, where update() can miss the first kick:
+            // the kick is clearly back this beat after low beats -> drop, one beat late.
+            const count = this.engine.clock.count;
+            if ((this.section === 'break' || this.section === 'build') && bassHist.length >= 4 &&
+                Math.max(...bassHist.slice(-3, -1)) < this.peakAvg * 0.6 && this.beatPeak > this.peakAvg * 0.8 &&
+                count - this.lastDrop > 16) {
+                this.lastDrop = count;
+                this.dropMoment();
+            }
             // Only beats with a kick teach us the kick level.
             if (!kickGone) this.peakAvg += (this.beatPeak - this.peakAvg) * 0.15;
             this.beatPeak = 0;
@@ -169,15 +179,19 @@
             // Bar-level variation, more of it with higher intensity and energy.
             const busy = this.intensity * (this.section === 'peak' ? 1 : this.section === 'build' ? 0.6 : 0.25);
             if (count % 4 === 0 && Math.random() < busy * 0.6) {
-                if (o.hits && Math.random() < 0.5) CLIFT.fx.hit(Math.random() < 0.5 ? 'hueJump' : 'burst');
-                else if (o.looks && Math.random() < 0.4) CLIFT.fx.hit('grid');
+                if (o.hits && Math.random() < 0.6) CLIFT.fx.hit(pick(['hueJump', 'burst', 'glitch', 'split', 'shock']));
+                else if (o.looks && Math.random() < 0.4) CLIFT.fx.hit('split');
                 else if (o.colors) e.stepDeckColor(Math.random() < 0.5 ? 'primary' : 'secondary', 1, 1 - e.offAirDeck);
             }
             if (o.hits && this.section === 'peak' && Math.random() < this.intensity * 0.35) {
                 CLIFT.fx.hit('punch', 0.6 + this.intensity * 0.4);
             }
+            if (o.hits && this.section === 'peak' && count % 8 === 0 && Math.random() < this.intensity * 0.4) {
+                CLIFT.fx.hit('explode', 0.6 + this.intensity * 0.4);
+            }
             if (o.hits && this.section === 'build' && count % 4 >= 2 && Math.random() < this.intensity * 0.5) {
-                CLIFT.fx.hit('punch', 0.5);
+                // Build-ups get more and more glitchy toward the drop.
+                CLIFT.fx.hit(Math.random() < 0.5 ? 'punch' : 'glitch', 0.5);
             }
         },
 
@@ -251,9 +265,10 @@
             if (o.looks) this.chooseLook(0.9);
             if (o.hits) {
                 CLIFT.fx.hit('strobe');
-                CLIFT.fx.hit('invert');
+                CLIFT.fx.hit('explode');
+                CLIFT.fx.hit('shock');
+                CLIFT.fx.hit('glitch');
                 CLIFT.fx.hit('burst');
-                CLIFT.fx.hit('punch');
             }
             CLIFT.events.emit('director-drop');
         },

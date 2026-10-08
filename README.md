@@ -52,19 +52,26 @@ permission and also works when the page is opened from disk (`file://`).
   or play an audio file (drop it onto the page). 64-band log spectrum, 5 bands,
   beat detection, tempo estimation and auto-level (keeps quiet inputs and highs lively)
 - **Tempo**: BPM clock, tap tempo (re-syncs the downbeat), sync to detected BPM
-- **Visual FX** (GPU, on the whole image): video **feedback** (trails, tunnels, smears with
-  zoom / spin / hue drift), **grid split** (tiles, mirrored tiles, kaleidoscope 4-12),
-  bass zoom, spin, wave, pixelate, hue cycling, posterize, plus 10 one-click **looks**
-  (trails, tunnel, melt, mirror, tiles, kaleido, acid, mosaic, storm...)
-- **Hits**: strobe, invert flash, zoom punch, hue jump, feedback burst, grid shuffle -
-  from buttons, MIDI pads, or automatically **on beat**
-- **On beat**: invert / strobe / punch / hue jump / burst / grid shuffle / color change /
-  effect change / scene change, each every 1-32 beats, counted on the BPM clock or on
-  detected beats
+- **Visual FX** (GPU, on the whole image):
+  - **dynamic split**: panels re-cut on the beat (each panel its own window of the image -
+    offset, zoomed, flipped) or sliding horizontal / vertical slices
+  - **glitch**: block displacement, scanline tears, per-block RGB split, channel swaps
+  - **explode**: shards flying out from a point with dark cracks, shockwave ring, or a
+    steady shatter that breathes with the bass
+  - **displacement**: flowing noise displacement and "liquid" (brightness displacement)
+  - video **feedback** (trails, tunnels, smears), mirrored / repeated tiles, bass zoom,
+    spin, wave, pixelate, hue cycling, posterize
+  - 15 one-click **looks** (trails, liquid, melt, mirror, panels, tunnel, slicer, tiles,
+    glitch, mosaic, datamosh, shatter, acid, storm...). No kaleidoscopes - VJ law.
+- **Hits**: explode, shockwave, glitch burst, split, strobe, invert flash, zoom punch,
+  hue jump, feedback burst - from buttons, MIDI pads, or automatically **on beat**
+- **On beat**: any of the hits plus tile shuffle / color change / effect change / scene
+  change, each every 1-32 beats, counted on the BPM clock or on detected beats
 - **Full Auto (the Director)**: follows the music instead of a timer. It tracks
   breakdowns, build-ups, peaks and drops, changes on phrase boundaries (8-64 beats), picks
   scenes whose energy fits the moment (no repeats), long dissolves in breakdowns, cuts at
-  peaks, a strobe + cut on the drop, matching FX looks and color palettes. Intensity goes
+  peaks, explosion + shockwave + glitch + cut on the drop, build-ups that get glitchier
+  toward the drop, matching FX looks and color palettes. Intensity goes
   from calm to wild; you choose what it may change
 - **Speed & Pulse** on every deck: Speed runs the scene 0.25x-4x, Pulse lets bass and
   beats push the scene forward and flash its colors, so every scene moves with the music.
@@ -101,7 +108,7 @@ Press **H** in the app for the full list. The essentials:
 | O | record | | F / Shift+F | fullscreen / projector window |
 | U | hide / show the interface | | W | live-coding server |
 | Shift+1 … 8 | recall snapshot | | L | text overlay |
-| G / Shift+G | next grid split / grid off | | Y / Shift+Y | feedback on/off / reset FX |
+| G / Shift+G | next split mode / re-split now | | Y / Shift+Y | feedback on/off / reset FX |
 
 Digits use the physical number keys, so they also work on AZERTY keyboards without Shift.
 

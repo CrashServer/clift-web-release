@@ -55,8 +55,9 @@
             gl_FragColor = vec4(mix(bg, fg, a), 1.0);
         }`;
 
-    // Visual FX pass (CLIFT.fx): kaleidoscope / grid split / zoom / rotate / wave /
-    // pixelate on the scene, then video feedback from the previous frame.
+    // Visual FX pass (CLIFT.fx), in order: explode (shatter + shockwave) -> dynamic split
+    // (panels / slices) -> tiles -> zoom / spin -> displacement (noise, liquid) -> wave /
+    // pixelate -> glitch (blocks, tears, RGB split) -> sample -> video feedback.
     const FX_FS = `
         #ifdef GL_FRAGMENT_PRECISION_HIGH
         precision highp float;
@@ -67,14 +68,35 @@
         uniform bool u_sceneFlip;
         uniform sampler2D u_prev;      // previous FX output (framebuffer, bottom-up)
         uniform vec2 u_resolution;
+        uniform float u_time;
+        // tiles
         uniform vec2 u_grid;
         uniform bool u_gridMirror;
-        uniform float u_kaleido;
+        // dynamic split: mode 1 = panels, 2 = horizontal slices, 3 = vertical slices
+        uniform float u_splitMode;
+        uniform float u_panelCount;
+        uniform vec4 u_panels[8];      // x, y, w, h (top-left origin)
+        uniform vec4 u_panelView[8];   // offset x, offset y, zoom, flip x
+        uniform float u_slices;
+        uniform float u_sliceAmount;
+        uniform vec2 u_sliceSeeds;
+        uniform float u_sliceMix;
+        // explode
+        uniform float u_shatter;
+        uniform vec2 u_explodeCenter;
+        uniform float u_shock;         // shockwave radius, < 0 = off
+        uniform float u_shockAmp;
+        // warp
         uniform float u_zoom;
         uniform float u_rotate;
+        uniform float u_displace;
+        uniform float u_liquid;
         uniform float u_wave;
         uniform float u_pixelate;
-        uniform float u_time;
+        // glitch
+        uniform float u_glitch;
+        uniform float u_glitchSeed;
+        // feedback
         uniform float u_feedback;
         uniform float u_fbZoom;
         uniform float u_fbRotate;
@@ -91,27 +113,111 @@
             float s = sin(a), c = cos(a);
             return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
         }
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+        vec2 hash2(vec2 p) {
+            return vec2(hash(p), hash(p + 19.19));
+        }
+        float noise(vec2 p) {
+            vec2 i = floor(p), f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                       mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+        }
+        float fbm(vec2 p) {
+            return noise(p) * 0.55 + noise(p * 2.1 + 3.7) * 0.3 + noise(p * 4.3 + 9.1) * 0.15;
+        }
+        vec2 repeat(vec2 uv) {
+            return 1.0 - abs(mod(uv, 2.0) - 1.0); // mirrored repeat fills the edges
+        }
+        vec3 scene(vec2 uv) {
+            uv = repeat(uv);
+            return texture2D(u_scene, u_sceneFlip ? vec2(uv.x, 1.0 - uv.y) : uv).rgb;
+        }
 
         void main() {
             vec2 uv = v_uv;
             vec2 aspect = vec2(u_resolution.x / u_resolution.y, 1.0);
+            float dark = 1.0;
 
-            if (u_kaleido > 0.5) {
-                vec2 p = (uv - 0.5) * aspect;
-                float r = length(p);
-                float seg = 6.2831853 / u_kaleido;
-                float a = mod(atan(p.y, p.x), seg);
-                a = abs(a - seg * 0.5);
-                uv = vec2(cos(a), sin(a)) * r / aspect + 0.5;
+            // ---- explode: shards fly away from the center, plus a shockwave ring
+            if (u_shatter > 0.001) {
+                vec2 p = uv * aspect * 5.0;
+                vec2 ip = floor(p), fp = fract(p);
+                float d1 = 8.0, d2 = 8.0;
+                vec2 cell = vec2(0.0);
+                for (int y = -1; y <= 1; y++) {
+                    for (int x = -1; x <= 1; x++) {
+                        vec2 g = vec2(float(x), float(y));
+                        vec2 r = g + hash2(ip + g) - fp;
+                        float d = dot(r, r);
+                        if (d < d1) { d2 = d1; d1 = d; cell = ip + g + hash2(ip + g); }
+                        else if (d < d2) { d2 = d; }
+                    }
+                }
+                vec2 center = cell / (aspect * 5.0);
+                float h = hash(cell);
+                vec2 dir = (center - u_explodeCenter) * aspect;
+                dir = normalize(dir + 0.0001) / aspect;
+                vec2 offset = dir * u_shatter * (0.1 + h * 0.4);
+                uv = center + rot(uv - offset - center, (h - 0.5) * u_shatter * 2.0);
+                // dark cracks between the shards
+                float edge = sqrt(d2) - sqrt(d1);
+                dark *= smoothstep(0.0, 0.06 * min(1.0, u_shatter * 6.0), edge);
             }
+            if (u_shock >= 0.0) {
+                vec2 q = (uv - u_explodeCenter) * aspect;
+                float r = length(q);
+                float ring = exp(-pow((r - u_shock) / 0.08, 2.0));
+                uv -= normalize(q + 0.0001) / aspect * ring * 0.08 * u_shockAmp;
+                dark *= 1.0 + ring * u_shockAmp * 0.8;
+            }
+
+            // ---- dynamic split
+            if (u_splitMode > 0.5 && u_splitMode < 1.5) {
+                for (int i = 0; i < 8; i++) {
+                    if (float(i) >= u_panelCount) break;
+                    vec4 r = u_panels[i];
+                    if (uv.x >= r.x && uv.x < r.x + r.z && uv.y >= r.y && uv.y < r.y + r.w) {
+                        vec4 v = u_panelView[i];
+                        vec2 local = uv - (r.xy + r.zw * 0.5);
+                        if (v.w > 0.5) local.x = -local.x;
+                        // 3px black gutter between panels
+                        vec2 px = (uv - r.xy) * u_resolution, size = r.zw * u_resolution;
+                        if (px.x < 3.0 || px.y < 3.0 || size.x - px.x < 3.0 || size.y - px.y < 3.0) dark = 0.0;
+                        uv = 0.5 + v.xy + local / v.z;
+                        break;
+                    }
+                }
+            } else if (u_splitMode > 1.5) {
+                bool horizontal = u_splitMode < 2.5;
+                float idx = floor((horizontal ? uv.y : uv.x) * u_slices);
+                float shift = mix(hash(vec2(idx, u_sliceSeeds.x)), hash(vec2(idx, u_sliceSeeds.y)), u_sliceMix) - 0.5;
+                if (horizontal) uv.x += shift * u_sliceAmount; else uv.y += shift * u_sliceAmount;
+            }
+
+            // ---- tiles
             if (u_grid.x > 1.0 || u_grid.y > 1.0) {
                 vec2 g = uv * u_grid;
-                vec2 cell = floor(g);
+                vec2 c = floor(g);
                 uv = fract(g);
-                if (u_gridMirror) uv = mix(uv, 1.0 - uv, mod(cell, 2.0));
+                if (u_gridMirror) uv = mix(uv, 1.0 - uv, mod(c, 2.0));
             }
+
+            // ---- zoom / spin
             vec2 p = rot((uv - 0.5) * aspect, u_rotate) / u_zoom;
             uv = p / aspect + 0.5;
+
+            // ---- displacement
+            if (u_displace > 0.0) {
+                vec2 d = vec2(fbm(uv * 3.0 + u_time * 0.35), fbm(uv * 3.0 + 7.1 - u_time * 0.3)) - 0.5;
+                uv += d * u_displace * 0.16;
+            }
+            if (u_liquid > 0.0) {
+                float l = dot(scene(uv), vec3(0.333));
+                uv += vec2(l - 0.25, (l - 0.25) * 0.6) * u_liquid * 0.09;
+            }
             if (u_wave > 0.0) {
                 uv.x += sin(uv.y * 18.0 + u_time * 3.0) * u_wave * 0.03;
                 uv.y += cos(uv.x * 14.0 + u_time * 2.0) * u_wave * 0.02;
@@ -120,9 +226,32 @@
                 vec2 cells = vec2(u_pixelate) * aspect;
                 uv = (floor(uv * cells) + 0.5) / cells;
             }
-            uv = 1.0 - abs(mod(uv, 2.0) - 1.0); // mirrored repeat fills the edges
-            vec3 color = texture2D(u_scene, u_sceneFlip ? vec2(uv.x, 1.0 - uv.y) : uv).rgb;
 
+            // ---- glitch
+            float split = 0.0;
+            bool swapChannels = false;
+            if (u_glitch > 0.0) {
+                float s = u_glitchSeed;
+                float scale = 1.0 + floor(hash(vec2(s, 1.0)) * 3.0);
+                vec2 block = floor(uv * vec2(6.0, 18.0) * scale);
+                float h = hash(block + s);
+                if (h < u_glitch * 0.45) {
+                    uv.x += (hash(block + s + 3.1) - 0.5) * 0.35 * u_glitch;
+                    split = (hash(block + s + 7.3) - 0.5) * 0.04 * u_glitch;
+                    swapChannels = hash(block + s + 1.7) < 0.25;
+                }
+                float row = floor(uv.y * 120.0);
+                if (hash(vec2(row, s)) > 1.0 - u_glitch * 0.12) uv.x += (hash(vec2(row + 1.0, s)) - 0.5) * 0.2;
+                split += u_glitch * 0.004;
+            }
+
+            vec3 color = split != 0.0
+                ? vec3(scene(uv + vec2(split, 0.0)).r, scene(uv).g, scene(uv - vec2(split, 0.0)).b)
+                : scene(uv);
+            if (swapChannels) color = color.brg;
+            color *= dark;
+
+            // ---- video feedback
             if (u_feedback > 0.0) {
                 vec2 q = rot((v_uv - 0.5) * aspect, u_fbRotate) / (1.0 + u_fbZoom);
                 vec2 puv = q / aspect + 0.5;
@@ -549,14 +678,31 @@
             gl.uniform1i(u.u_prev, 1);
             gl.uniform1i(u.u_sceneFlip, srcFlip ? 1 : 0);
             gl.uniform2f(u.u_resolution, this.canvas.width, this.canvas.height);
+            gl.uniform1f(u.u_time, performance.now() / 1000);
             gl.uniform2f(u.u_grid, f.gridCols, f.gridRows);
             gl.uniform1i(u.u_gridMirror, f.gridMirror ? 1 : 0);
-            gl.uniform1f(u.u_kaleido, f.kaleido);
+            gl.uniform1f(u.u_splitMode, f.splitMode);
+            gl.uniform1f(u.u_panelCount, f.panels.length / 4);
+            if (f.panels.length) {
+                gl.uniform4fv(u['u_panels[0]'], f.panels);
+                gl.uniform4fv(u['u_panelView[0]'], f.panelViews);
+            }
+            gl.uniform1f(u.u_slices, f.slices);
+            gl.uniform1f(u.u_sliceAmount, f.sliceAmount);
+            gl.uniform2f(u.u_sliceSeeds, f.sliceSeeds[0], f.sliceSeeds[1]);
+            gl.uniform1f(u.u_sliceMix, f.sliceMix);
+            gl.uniform1f(u.u_shatter, f.shatter);
+            gl.uniform2f(u.u_explodeCenter, f.explodeCenter[0], f.explodeCenter[1]);
+            gl.uniform1f(u.u_shock, f.shock);
+            gl.uniform1f(u.u_shockAmp, f.shockAmp);
             gl.uniform1f(u.u_zoom, f.zoom);
             gl.uniform1f(u.u_rotate, f.rotate);
+            gl.uniform1f(u.u_displace, f.displace);
+            gl.uniform1f(u.u_liquid, f.liquid);
             gl.uniform1f(u.u_wave, f.wave);
             gl.uniform1f(u.u_pixelate, f.pixelate);
-            gl.uniform1f(u.u_time, performance.now() / 1000);
+            gl.uniform1f(u.u_glitch, f.glitch);
+            gl.uniform1f(u.u_glitchSeed, f.glitchSeed);
             gl.uniform1f(u.u_feedback, f.feedback);
             gl.uniform1f(u.u_fbZoom, f.fbZoom);
             gl.uniform1f(u.u_fbRotate, f.fbRotate);

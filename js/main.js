@@ -20,6 +20,7 @@
 
         CLIFT.director.init(engine);
         CLIFT.beatActions.init();
+        CLIFT.fx.init();
         CLIFT.session.init(engine);
         CLIFT.ws.init(engine);
         CLIFT.outputWindow.init();

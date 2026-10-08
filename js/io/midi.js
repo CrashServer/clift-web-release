@@ -34,6 +34,11 @@
         range('fbZoom', 'Trail zoom', v => CLIFT.fx.set('fbZoom', Math.round((v - 0.5) * 40) / 200)),
         range('fbRotate', 'Trail spin', v => CLIFT.fx.set('fbRotate', Math.round((v - 0.5) * 40) / 20)),
         range('bassZoom', 'Bass zoom', v => CLIFT.fx.set('bassZoom', v)),
+        range('glitchAmt', 'Glitch amount', v => CLIFT.fx.set('glitch', v)),
+        range('shatterAmt', 'Shatter amount', v => CLIFT.fx.set('shatter', v)),
+        range('displaceAmt', 'Displace amount', v => CLIFT.fx.set('displace', v)),
+        range('liquidAmt', 'Liquid amount', v => CLIFT.fx.set('liquid', v)),
+        range('sliceAmt', 'Slice shift', v => CLIFT.fx.set('sliceAmount', v)),
         range('hueSpeed', 'Hue cycle', v => CLIFT.fx.set('hueSpeed', v)),
         range('intensity', 'Full Auto intensity', v => { CLIFT.director.intensity = v; CLIFT.events.emit('state'); }),
         range('glow', 'Post-FX glow', v => CLIFT.output.set('glow', Math.round(v * 40) / 10)),
@@ -65,8 +70,13 @@
         trigger('punch', 'Zoom punch', () => CLIFT.fx.hit('punch')),
         trigger('hueJump', 'Hue jump', () => CLIFT.fx.hit('hueJump')),
         trigger('burst', 'Feedback burst', () => CLIFT.fx.hit('burst')),
-        trigger('gridNext', 'Next grid split', () => CLIFT.fx.stepGrid(1)),
-        trigger('gridShuffle', 'Random grid split', () => CLIFT.fx.hit('grid')),
+        trigger('glitchHit', 'Glitch burst', () => CLIFT.fx.hit('glitch')),
+        trigger('explode', 'Explode', () => CLIFT.fx.hit('explode')),
+        trigger('shock', 'Shockwave', () => CLIFT.fx.hit('shock')),
+        trigger('splitHit', 'Split screen now', () => CLIFT.fx.hit('split')),
+        trigger('splitNext', 'Next split mode', () => CLIFT.fx.stepSplit(1)),
+        trigger('gridNext', 'Next tile grid', () => CLIFT.fx.stepGrid(1)),
+        trigger('gridShuffle', 'Random tile grid', () => CLIFT.fx.hit('grid')),
         trigger('lookNext', 'Next FX look', () => {
             const n = CLIFT.fx.lookNames;
             CLIFT.fx.applyLook(n[(n.indexOf(CLIFT.fx.look) + 1) % n.length]);

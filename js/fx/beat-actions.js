@@ -11,7 +11,11 @@
         { id: 'punch', label: 'Zoom punch', run: () => CLIFT.fx.hit('punch') },
         { id: 'hueJump', label: 'Hue jump', run: () => CLIFT.fx.hit('hueJump') },
         { id: 'burst', label: 'Feedback burst', run: () => CLIFT.fx.hit('burst') },
-        { id: 'grid', label: 'Grid shuffle', run: () => CLIFT.fx.hit('grid') },
+        { id: 'glitch', label: 'Glitch burst', run: () => CLIFT.fx.hit('glitch') },
+        { id: 'split', label: 'Split screen', run: () => CLIFT.fx.hit('split') },
+        { id: 'explode', label: 'Explode', run: () => CLIFT.fx.hit('explode') },
+        { id: 'shock', label: 'Shockwave', run: () => CLIFT.fx.hit('shock') },
+        { id: 'grid', label: 'Tile shuffle', run: () => CLIFT.fx.hit('grid') },
         { id: 'colors', label: 'Color change', run: () => { e().randomizeColors(0); e().randomizeColors(1); } },
         { id: 'effect', label: 'Effect change', run: () => e().setEffect(Math.random() < 0.35 ? 0 : 1 + CLIFT.util.randInt(e().effects.length - 1)) },
         { id: 'scene', label: 'Scene change', run: () => CLIFT.director.cutToNewScene() }
@@ -19,7 +23,7 @@
 
     const EVERY = [1, 2, 4, 8, 16, 32];
 
-    const defaults = () => Object.fromEntries(ACTIONS.map(a => [a.id, { on: false, every: a.id === 'scene' ? 16 : a.id === 'colors' || a.id === 'grid' ? 8 : 4 }]));
+    const defaults = () => Object.fromEntries(ACTIONS.map(a => [a.id, { on: false, every: a.id === 'scene' || a.id === 'explode' ? 16 : ['colors', 'grid', 'shock'].includes(a.id) ? 8 : a.id === 'split' ? 2 : 4 }]));
 
     const beats = {
         ACTIONS,
