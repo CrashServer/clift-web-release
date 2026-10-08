@@ -34,6 +34,34 @@
 
     const RECENT = 16;
 
+    // Hits per section: [kind, weight]. Peaks use everything.
+    const HITS = {
+        break: [['hueJump', 3], ['burst', 3], ['shock', 1]],
+        groove: [['punch', 4], ['hueJump', 3], ['split', 3], ['glitch', 2], ['burst', 2], ['grid', 1], ['invert', 1], ['shock', 1]],
+        build: [['glitch', 4], ['punch', 3], ['split', 3], ['shock', 2], ['strobe', 1], ['hueJump', 1]],
+        peak: [['explode', 3], ['shock', 3], ['glitch', 3], ['punch', 3], ['strobe', 2], ['invert', 2], ['split', 3], ['burst', 2], ['grid', 1], ['hueJump', 2]]
+    };
+    // Chance of a hit on the downbeat / on other beats, before intensity.
+    const HIT_RATE = {
+        break: [0.25, 0],
+        groove: [0.6, 0.12],
+        build: [0.75, 0.3],
+        peak: [0.95, 0.45]
+    };
+
+    // FX parameters the Director keeps moving, with the range it may use.
+    const MOTION = {
+        feedback: [0, 0.92], fbZoom: [-0.04, 0.07], fbRotate: [-0.6, 0.6], fbHue: [0, 0.6],
+        glitch: [0, 0.6], shatter: [0, 0.35], displace: [0, 0.6], liquid: [0, 0.7], sliceAmount: [0.1, 0.8],
+        bassZoom: [0, 0.8], spin: [-0.3, 0.3], wave: [0, 0.5], hueSpeed: [0, 0.5], pixelate: [0, 0.4]
+    };
+
+    function weighted(list) {
+        let r = Math.random() * list.reduce((a, [, w]) => a + w, 0);
+        for (const [item, w] of list) { r -= w; if (r <= 0) return item; }
+        return list[0][0];
+    }
+
     const director = {
         enabled: false,
         intensity: 0.6,
@@ -98,6 +126,11 @@
             CLIFT.events.on('clock-beat', (count) => {
                 if (this.enabled) this.onBeat(count);
             });
+            CLIFT.events.on('beat', (strength) => {
+                if (this.enabled && this.options.hits && this.section === 'peak' && strength > 0.6 && Math.random() < this.intensity * 0.5) {
+                    CLIFT.fx.hit('punch', strength);
+                }
+            });
         },
 
         toggle(force) {
@@ -108,7 +141,17 @@
 
         // ---- music tracking (every frame) ---------------------------------------
 
+        // Glide FX parameters toward the targets picked each bar (sliders move).
+        animateFx(dt) {
+            const settings = CLIFT.fx.settings;
+            const k = 1 - Math.exp(-dt / 700);
+            for (const [key, target] of Object.entries(this.fxTargets)) {
+                settings[key] += (target - settings[key]) * k;
+            }
+        },
+
         update(dt, audio) {
+            if (this.enabled && this.options.looks && this.fxTargets) this.animateFx(dt);
             const raw = audio.raw || { volume: audio.volume, bass: audio.bands.bass };
             const level = raw.volume * 0.6 + raw.bass * 0.4;
             const k = (tau) => 1 - Math.exp(-dt / tau);
@@ -205,26 +248,81 @@
                 return;
             }
 
-            // Bar-level variation, more of it with higher intensity and energy.
-            const busy = this.intensity * (this.section === 'peak' ? 1 : this.section === 'build' ? 0.6 : 0.25);
-            if (count % 4 === 0 && Math.random() < busy * 0.6) {
-                if (o.hits && Math.random() < 0.6) CLIFT.fx.hit(pick(['hueJump', 'burst', 'glitch', 'split', 'shock', 'grid', 'invert']));
-                else if (o.looks && Math.random() < 0.4) CLIFT.fx.hit(pick(['split', 'grid']));
-                else if (o.colors) e.stepDeckColor(Math.random() < 0.5 ? 'primary' : 'secondary', 1, 1 - e.offAirDeck);
+            if (count % 4 === 0) this.barChange(count);
+            this.maybeHit(count);
+        },
+
+        // Hits: likely on downbeats, sometimes on other beats; build-ups get busier
+        // toward the end of the phrase.
+        maybeHit(count) {
+            if (!this.options.hits) return;
+            const [down, other] = HIT_RATE[this.section];
+            const toEnd = 1 - (this.phrase - (count % this.phrase)) / this.phrase;
+            let chance = (count % 4 === 0 ? down : other) * (0.35 + this.intensity * 0.8);
+            if (this.section === 'build') chance += toEnd * 0.5 * this.intensity;
+            if (Math.random() >= chance) return;
+            const kind = weighted(HITS[this.section]);
+            CLIFT.fx.hit(kind, 0.6 + this.intensity * 0.4);
+        },
+
+        // Every bar: new FX motion targets, small color / split / tint changes.
+        barChange(count) {
+            const o = this.options;
+            const e = this.engine;
+            const energy = { break: 0.3, groove: 0.55, build: 0.75, peak: 1 }[this.section] * (0.4 + this.intensity * 0.8);
+            if (o.looks) this.newFxTargets(energy);
+            if (o.colors && Math.random() < 0.25 + energy * 0.35) {
+                const onAir = 1 - e.offAirDeck;
+                const r = Math.random();
+                if (r < 0.4) e.stepGradient(1, onAir);
+                else if (r < 0.75) e.stepDeckColor(Math.random() < 0.5 ? 'primary' : 'secondary', 1 + CLIFT.util.randInt(3), onAir);
+                else this.applyPalette(onAir);
             }
-            if (o.hits && this.section === 'peak' && Math.random() < this.intensity * 0.35) {
-                CLIFT.fx.hit('punch', 0.6 + this.intensity * 0.4);
+            if (o.looks && CLIFT.fx.settings.split === 0 && Math.random() < energy * 0.15) {
+                CLIFT.fx.settings.split = 1 + CLIFT.util.randInt(3); // a split drifts in...
+                CLIFT.fx.resplit();
+            } else if (o.looks && CLIFT.fx.settings.split > 0 && Math.random() < 0.12) {
+                CLIFT.fx.settings.split = 0;                          // ...and out again
             }
-            if (o.hits && this.section === 'peak' && Math.random() < this.intensity * 0.12) {
-                CLIFT.fx.hit(Math.random() < 0.5 ? 'strobe' : 'invert');
+            if (o.looks && Math.random() < energy * 0.12) {
+                CLIFT.fx.settings.grid = CLIFT.fx.settings.grid ? 0 : 1 + CLIFT.util.randInt(CLIFT.fx.GRIDS.length - 1);
             }
-            if (o.hits && this.section === 'peak' && count % 8 === 0 && Math.random() < this.intensity * 0.4) {
-                CLIFT.fx.hit('explode', 0.6 + this.intensity * 0.4);
+            if (o.resolution && this.section === 'peak' && Math.random() < 0.1 * this.intensity) this.chooseResolution();
+            if (o.postfx && CLIFT.output.options.enabled && Math.random() < 0.2) CLIFT.output.stepStyle(1);
+            if (o.renderModes) {
+                const modes = e.renderModes.length;
+                if (e.renderMode !== 0 && Math.random() < 0.3) {
+                    // hop to another render mode, or back to plain ASCII
+                    e.setRenderMode(Math.random() < 0.5 ? 0 : 1 + CLIFT.util.randInt(modes - 1));
+                } else if (e.renderMode === 0 && Math.random() < 0.15 * energy) {
+                    e.setRenderMode(1 + CLIFT.util.randInt(modes - 1));
+                }
             }
-            if (o.hits && this.section === 'build' && count % 4 >= 2 && Math.random() < this.intensity * 0.5) {
-                // Build-ups get more and more glitchy toward the drop.
-                CLIFT.fx.hit(Math.random() < 0.5 ? 'punch' : 'glitch', 0.5);
+            CLIFT.events.emit('state');
+        },
+
+        // Targets around the current look: its own parameters wander, and one or two
+        // extra effects fade in for a while.
+        newFxTargets(energy) {
+            const base = this.lookBase || CLIFT.fx.settings;
+            const targets = {};
+            for (const [key, [lo, hi]] of Object.entries(MOTION)) {
+                const b = base[key];
+                if (b !== 0) {
+                    const span = (hi - lo) * 0.35 * energy;
+                    targets[key] = clamp(b + (Math.random() * 2 - 1) * span, lo, hi);
+                } else {
+                    targets[key] = 0;
+                }
             }
+            const keys = Object.keys(MOTION);
+            const extras = 1 + Math.floor(Math.random() * (1 + energy * 2));
+            for (let i = 0; i < extras; i++) {
+                const key = pick(keys);
+                const [lo, hi] = MOTION[key];
+                targets[key] = lo + Math.random() * (hi - lo) * Math.min(1, 0.4 + energy * 0.6);
+            }
+            this.fxTargets = targets;
         },
 
         phraseChange() {
@@ -266,13 +364,10 @@
                 e.setEffect(Math.random() < chance ? 1 + CLIFT.util.randInt(e.effects.length - 1) : 0);
             }
             if (o.renderModes) {
-                e.setRenderMode(Math.random() < (this.section === 'break' ? 0.25 : 0.1) ? 1 + CLIFT.util.randInt(e.renderModes.length - 1) : 0);
+                const chance = { break: 0.6, groove: 0.5, build: 0.5, peak: 0.4 }[this.section];
+                e.setRenderMode(Math.random() < chance ? 1 + CLIFT.util.randInt(e.renderModes.length - 1) : 0);
             }
-            if (o.resolution && Math.random() < 0.5) {
-                const res = this.section === 'break' ? [[60, 18], [80, 24]] : this.section === 'peak' ? [[120, 36], [160, 48], [200, 60]] : [[80, 24], [100, 30], [120, 36]];
-                const [w, h] = pick(res);
-                e.setResolution(w, h);
-            }
+            if (o.resolution && Math.random() < 0.85) this.chooseResolution();
             if (o.colorModes) {
                 const r = Math.random();
                 e.colorMode = this.section === 'peak' ? (r < 0.8 ? 0 : 2) : r < 0.6 ? 0 : r < 0.8 ? 1 : 2;
@@ -286,6 +381,20 @@
                 this.showText('marquee', this.phrase);
             }
             CLIFT.events.emit('state');
+        },
+
+        // Grid size by section: coarse and chunky when calm, dense at peaks.
+        chooseResolution(section = this.section) {
+            const res = {
+                break: [[40, 12], [60, 18], [80, 24]],
+                groove: [[60, 18], [80, 24], [100, 30], [120, 36]],
+                build: [[80, 24], [100, 30], [120, 36], [160, 48]],
+                peak: [[100, 30], [120, 36], [160, 48], [200, 60]]
+            }[section];
+            const e = this.engine;
+            let next;
+            do { next = pick(res); } while (res.length > 1 && next[0] === e.width);
+            e.setResolution(next[0], next[1]);
         },
 
         // Speed and params for a freshly cued scene.
@@ -342,6 +451,7 @@
             if (o.effects) e.setEffect(0);
             if (o.invert) e.invertColors = false;
             if (o.postfx && CLIFT.output.supported) this.choosePostFx();
+            if (o.resolution) this.chooseResolution('break');
             CLIFT.events.emit('state');
         },
 
@@ -359,6 +469,7 @@
             e.setCrossfader(target);
             if (o.looks) this.chooseLook(0.9);
             if (o.colorModes) e.colorMode = 0;
+            if (o.resolution) this.chooseResolution('peak');
             if (o.postfx && CLIFT.output.supported) this.choosePostFx();
             if (o.text && CLIFT.textOverlay.text && !this.textOwnedByUser()) this.showText('big', 8);
             if (o.hits) {
@@ -419,9 +530,15 @@
             let r = Math.random() * scored.reduce((a, [, w]) => a + w, 0);
             for (const [name, w] of scored) {
                 r -= w;
-                if (r <= 0) { CLIFT.fx.applyLook(name); return; }
+                if (r <= 0) return this.useLook(name);
             }
-            CLIFT.fx.applyLook(looks[0]);
+            this.useLook(looks[0]);
+        },
+
+        useLook(name) {
+            CLIFT.fx.applyLook(name);
+            this.lookBase = { ...CLIFT.fx.settings };
+            this.fxTargets = null;
         },
 
         // Used by the "Scene change" beat action.
@@ -451,8 +568,10 @@
             if (!state) return;
             if (typeof state.intensity === 'number') this.intensity = clamp(state.intensity, 0, 1);
             if (this.phrases.includes(state.phrase)) this.phrase = state.phrase;
+            // Options saved before v3.2 (no 'colorModes' key) predate "everything on" -> keep defaults.
+            if (!state.options || !('colorModes' in state.options)) return;
             for (const k of Object.keys(this.options)) {
-                if (state.options && typeof state.options[k] === 'boolean') this.options[k] = state.options[k];
+                if (typeof state.options[k] === 'boolean') this.options[k] = state.options[k];
             }
         }
     };

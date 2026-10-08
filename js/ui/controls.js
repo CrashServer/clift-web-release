@@ -1033,7 +1033,10 @@
             }
 
             if (e.frameCount % 10 === 0) {
-                if (CLIFT.director.enabled) this.syncAutoStatus();
+                if (CLIFT.director.enabled) {
+                    this.syncAutoStatus();
+                    this.syncVfx(); // the Director keeps moving the FX sliders
+                }
             }
             if (e.frameCount % 15 === 0) {
                 $('stat-fps').textContent = `${e.fps} fps`;
