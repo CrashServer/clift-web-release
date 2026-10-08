@@ -76,6 +76,10 @@
         { group: 'Color', label: 'I', desc: 'Invert FG/BG', key: ['i'],
             run: () => { e().invertColors = !e().invertColors; CLIFT.events.emit('state'); } },
 
+        { group: 'Visual FX', label: 'G / Shift+G', desc: 'Next grid split / grid off', key: ['g'], anyShift: true,
+            run: (ev) => ev.shiftKey ? CLIFT.fx.set('grid', 0) : CLIFT.fx.stepGrid(1) },
+        { group: 'Visual FX', label: 'Y', desc: 'Feedback trails on/off', key: ['y'], run: () => CLIFT.fx.toggleFeedback() },
+        { group: 'Visual FX', label: 'Shift+Y', desc: 'Reset visual FX', key: ['y'], shift: true, run: () => CLIFT.fx.reset() },
         { group: 'Post-FX', label: 'P', desc: 'Post-FX on/off', key: ['p'], run: () => out().toggle() },
         { group: 'Post-FX', label: 'D', desc: 'Next preset', key: ['d'], run: () => out().stepPreset(1) },
         { group: 'Post-FX', label: 'S', desc: 'Next tint', key: ['s'], run: () => out().stepStyle(1) },

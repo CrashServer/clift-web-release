@@ -107,6 +107,33 @@
             </div>
         </details>
 
+        <details class="section" open data-section="vfx">
+            <summary>Visual FX <span class="sum-state" id="vfx-state">off</span></summary>
+            <div class="chips" id="vfx-looks" title="Looks: complete FX setups"></div>
+            <div class="row">
+                <label class="field-label">Grid</label>
+                <select id="vfx-grid" class="grow" title="Split the image (G / Shift+G)"></select>
+            </div>
+            <div id="vfx-sliders"></div>
+            <label class="field-label">Hits</label>
+            <div class="chips" id="vfx-hits"></div>
+            <div class="row"><button class="grow" id="vfx-reset">Reset FX</button></div>
+            <p class="hint" id="vfx-unsupported" hidden>Visual FX need WebGL.</p>
+        </details>
+
+        <details class="section" data-section="beats">
+            <summary>On beat <span class="sum-state" id="beats-state">off</span></summary>
+            <div class="row">
+                <label class="field-label">Count</label>
+                <select id="beats-source" class="grow" title="What the 'every N' counts">
+                    <option value="clock">BPM clock beats</option>
+                    <option value="audio">Detected audio beats</option>
+                </select>
+            </div>
+            <div class="beat-actions" id="beat-actions"></div>
+            <div class="row"><button class="grow" id="beats-off">All off</button></div>
+        </details>
+
         <details class="section" data-section="text">
             <summary>Text overlay <span class="sum-state" id="text-state">off</span></summary>
             <input type="text" id="text-input" class="full" maxlength="200" placeholder="Message… (Enter shows it)" spellcheck="false">
@@ -171,8 +198,11 @@
             <summary>Full Auto <span class="sum-state" id="auto-state">off</span></summary>
             <div class="row">
                 <button class="toggle grow" id="auto-toggle" title="Full Auto (M)">Full Auto</button>
-                <select id="auto-rate" title="How often things change"></select>
+                <select id="auto-phrase" title="Phrase length: big changes happen on these boundaries"></select>
             </div>
+            <label class="slider" title="Calm: gentle looks and few hits. Wild: heavy FX, more hits and cuts"><span>Intensity</span><input type="range" id="auto-intensity" min="0" max="1" step="0.01"><output></output></label>
+            <div class="auto-status" id="auto-status"></div>
+            <label class="field-label">Auto may change</label>
             <div class="checks" id="auto-options"></div>
         </details>
 
@@ -339,6 +369,8 @@
     <script src="js/fx/effects.js"></script>
     <script src="js/fx/effects-3d.js"></script>
     <script src="js/fx/effects-shader.js"></script>
+    <script src="js/fx/fx-rack.js"></script>
+    <script src="js/fx/beat-actions.js"></script>
     <script src="js/fx/output.js"></script>
 
     <script src="js/audio/analysis.js"></script>

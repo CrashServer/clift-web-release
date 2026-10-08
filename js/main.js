@@ -18,7 +18,8 @@
         CLIFT.engine = engine;
         window.clift = engine; // console / editor access
 
-        CLIFT.automation.init(engine);
+        CLIFT.director.init(engine);
+        CLIFT.beatActions.init();
         CLIFT.session.init(engine);
         CLIFT.ws.init(engine);
         CLIFT.outputWindow.init();

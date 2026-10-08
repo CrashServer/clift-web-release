@@ -44,6 +44,8 @@
             this.bindSnapshots();
             this.bindText();
             this.bindMidi();
+            this.bindVfx();
+            this.bindBeats();
 
             // Mouse-clicked buttons keep focus, so a later Space/Enter would
             // "click" them again on top of the shortcut. Drop focus after clicks.
@@ -144,7 +146,7 @@
             fillSelect($('transition-beats'), e.transitionBeatOptions.map(b => [b, `${b} beat${b > 1 ? 's' : ''}`]));
             fillSelect($('res-select'), e.resolutions.map(([w, h], i) => [i, `${w} × ${h}`]));
             fillSelect($('postfx-style'), CLIFT.output.styleNames.map(n => [n, n]));
-            fillSelect($('auto-rate'), CLIFT.automation.rates.map(r => [r, r]));
+            fillSelect($('auto-phrase'), CLIFT.director.phrases.map(b => [b, `${b} beats`]));
 
             for (const which of ['primary', 'secondary']) {
                 const box = $(`${which}-swatches`);
@@ -373,9 +375,15 @@
         },
 
         bindAuto() {
-            const auto = CLIFT.automation;
+            const auto = CLIFT.director;
             $('auto-toggle').onclick = () => auto.toggle();
-            $('auto-rate').onchange = (ev) => { auto.rate = ev.target.value; CLIFT.events.emit('state'); };
+            $('auto-phrase').onchange = (ev) => { auto.phrase = Number(ev.target.value); CLIFT.events.emit('state'); };
+            const intensity = $('auto-intensity');
+            intensity.oninput = () => {
+                auto.intensity = Number(intensity.value);
+                intensity.nextElementSibling.textContent = this.intensityLabel(auto.intensity);
+            };
+            intensity.onchange = () => CLIFT.events.emit('state');
             $('auto-options').onchange = (ev) => {
                 const key = ev.target.dataset.opt;
                 if (key) { auto.options[key] = ev.target.checked; CLIFT.events.emit('state'); }
@@ -599,6 +607,154 @@
             if ($('midi-modal').open) $('midi-last').textContent = `Last: ${CLIFT.midi.lastMessage}`;
         },
 
+        intensityLabel(v) {
+            return v < 0.25 ? 'calm' : v < 0.5 ? 'easy' : v < 0.75 ? 'lively' : 'wild';
+        },
+
+        syncAutoStatus() {
+            const auto = CLIFT.director;
+            const el = $('auto-status');
+            if (!auto.enabled) {
+                $('auto-state').textContent = 'off';
+                el.textContent = 'Follows the music: sections, phrases and drops.';
+                return;
+            }
+            const st = auto.status();
+            $('auto-state').textContent = st.section;
+            el.replaceChildren();
+            const sec = document.createElement('span');
+            sec.className = 'sec ' + st.section;
+            sec.textContent = st.section;
+            const bar = document.createElement('span');
+            bar.className = 'bar';
+            bar.title = 'Energy against the track\'s recent peak';
+            const fill = document.createElement('i');
+            fill.style.width = `${Math.round(Math.min(1, st.energy) * 100)}%`;
+            bar.appendChild(fill);
+            const next = document.createElement('span');
+            next.textContent = `next in ${st.nextIn}`;
+            el.append(sec, bar, next);
+        },
+
+        // ---- visual FX ------------------------------------------------------------
+
+        bindVfx() {
+            const fx = CLIFT.fx;
+            const looks = $('vfx-looks');
+            for (const name of fx.lookNames) {
+                const b = document.createElement('button');
+                b.textContent = name;
+                b.dataset.look = name;
+                looks.appendChild(b);
+            }
+            looks.onclick = (ev) => {
+                const b = ev.target.closest('button');
+                if (b) fx.applyLook(b.dataset.look);
+            };
+            fillSelect($('vfx-grid'), fx.GRIDS.map((g, i) => [i, g.name]));
+            $('vfx-grid').onchange = (ev) => fx.set('grid', Number(ev.target.value));
+
+            const SLIDERS = [
+                ['feedback', 'Feedback', 0, 0.97, 0.01],
+                ['fbZoom', 'Trail zoom', -0.1, 0.1, 0.005],
+                ['fbRotate', 'Trail spin', -1, 1, 0.05],
+                ['fbHue', 'Trail hue', 0, 1, 0.05],
+                ['fbLevel', 'Trail by level', 0, 1, 0.05],
+                ['bassZoom', 'Bass zoom', 0, 1, 0.05],
+                ['spin', 'Spin', -1, 1, 0.05],
+                ['wave', 'Wave', 0, 1, 0.05],
+                ['pixelate', 'Pixelate', 0, 1, 0.05],
+                ['hueSpeed', 'Hue cycle', 0, 1, 0.05],
+                ['posterize', 'Posterize', 0, 1, 0.05]
+            ];
+            const box = $('vfx-sliders');
+            this.vfxInputs = {};
+            for (const [key, label, min, max, step] of SLIDERS) {
+                const l = document.createElement('label');
+                l.className = 'slider';
+                const span = document.createElement('span');
+                span.textContent = label;
+                const input = document.createElement('input');
+                Object.assign(input, { type: 'range', min, max, step });
+                const out = document.createElement('output');
+                l.append(span, input, out);
+                box.appendChild(l);
+                input.oninput = () => {
+                    fx.settings[key] = Number(input.value);
+                    fx.look = '';
+                    out.textContent = Number(input.value).toFixed(2);
+                };
+                input.onchange = () => CLIFT.events.emit('state');
+                this.vfxInputs[key] = input;
+            }
+
+            const hits = $('vfx-hits');
+            for (const [kind, label] of [['strobe', 'strobe'], ['invert', 'invert'], ['punch', 'punch'], ['hueJump', 'hue'], ['burst', 'burst'], ['grid', 'grid']]) {
+                const b = document.createElement('button');
+                b.textContent = label;
+                b.dataset.hit = kind;
+                hits.appendChild(b);
+            }
+            hits.onclick = (ev) => {
+                const b = ev.target.closest('button');
+                if (b) fx.hit(b.dataset.hit);
+            };
+            $('vfx-reset').onclick = () => fx.reset();
+
+            if (!CLIFT.output.supported) {
+                $('vfx-unsupported').hidden = false;
+                for (const el of $('panel').querySelectorAll('[data-section="vfx"] button, [data-section="vfx"] input, [data-section="vfx"] select')) el.disabled = true;
+            }
+        },
+
+        syncVfx() {
+            const fx = CLIFT.fx;
+            for (const b of $('vfx-looks').children) b.classList.toggle('on', b.dataset.look === fx.look);
+            $('vfx-grid').value = fx.settings.grid;
+            for (const [key, input] of Object.entries(this.vfxInputs)) {
+                input.value = fx.settings[key];
+                input.nextElementSibling.textContent = Number(fx.settings[key]).toFixed(2);
+            }
+            const on = fx.active;
+            $('vfx-state').textContent = on ? (fx.look || 'custom') : 'off';
+            $('vfx-state').classList.toggle('on', on);
+        },
+
+        // ---- beat actions --------------------------------------------------------
+
+        bindBeats() {
+            const ba = CLIFT.beatActions;
+            const box = $('beat-actions');
+            for (const a of ba.ACTIONS) {
+                const l = document.createElement('label');
+                const c = document.createElement('input');
+                c.type = 'checkbox';
+                c.dataset.action = a.id;
+                l.append(c, a.label);
+                const sel = document.createElement('select');
+                sel.dataset.every = a.id;
+                fillSelect(sel, ba.EVERY.map(n => [n, n === 1 ? 'every beat' : `every ${n}`]));
+                box.append(l, sel);
+            }
+            box.onchange = (ev) => {
+                const t = ev.target;
+                if (t.dataset.action) ba.set(t.dataset.action, 'on', t.checked);
+                if (t.dataset.every) ba.set(t.dataset.every, 'every', Number(t.value));
+            };
+            $('beats-source').onchange = (ev) => ba.setSource(ev.target.value);
+            $('beats-off').onclick = () => ba.allOff();
+        },
+
+        syncBeats() {
+            const ba = CLIFT.beatActions;
+            $('beats-source').value = ba.source;
+            for (const c of $('beat-actions').querySelectorAll('input')) c.checked = ba.config[c.dataset.action].on;
+            for (const sel of $('beat-actions').querySelectorAll('select')) sel.value = ba.config[sel.dataset.every].every;
+            const n = ba.ACTIONS.filter(a => ba.config[a.id].on).length;
+            $('beats-state').textContent = n ? `${n} on` : 'off';
+            $('beats-state').classList.toggle('on', n > 0);
+        },
+
         bindDialogs() {
             for (const d of document.querySelectorAll('dialog')) {
                 d.addEventListener('click', (ev) => {
@@ -703,12 +859,16 @@
             if (document.activeElement !== $('bpm-input')) $('bpm-input').value = e.bpm;
             $('stat-bpm').textContent = e.bpm;
 
-            const auto = CLIFT.automation;
+            const auto = CLIFT.director;
             setToggle($('auto-toggle'), auto.enabled, 'Auto ON', 'Full Auto');
-            $('auto-state').textContent = auto.enabled ? auto.rate.toLowerCase() : 'off';
             $('auto-state').classList.toggle('on', auto.enabled);
             $('badge-auto').hidden = !auto.enabled;
-            $('auto-rate').value = auto.rate;
+            $('auto-phrase').value = auto.phrase;
+            $('auto-intensity').value = auto.intensity;
+            $('auto-intensity').nextElementSibling.textContent = this.intensityLabel(auto.intensity);
+            this.syncAutoStatus();
+            this.syncVfx();
+            this.syncBeats();
             for (const c of $('auto-options').querySelectorAll('input')) c.checked = !!auto.options[c.dataset.opt];
 
             const snaps = CLIFT.snapshots;
@@ -860,6 +1020,9 @@
                 this.drawPreview(1, e.bufferB, e.colorBufferB);
             }
 
+            if (e.frameCount % 10 === 0) {
+                if (CLIFT.director.enabled) this.syncAutoStatus();
+            }
             if (e.frameCount % 15 === 0) {
                 $('stat-fps').textContent = `${e.fps} fps`;
                 $('detected-bpm').textContent = CLIFT.audio.detectedBPM || '--';

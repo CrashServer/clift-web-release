@@ -37,10 +37,9 @@
                     pulse: d.pulse
                 })),
                 postfx: CLIFT.output.getOptions(),
-                auto: {
-                    rate: CLIFT.automation.rate,
-                    options: Object.assign({}, CLIFT.automation.options)
-                },
+                auto: CLIFT.director.getState(),
+                fx: CLIFT.fx.getState(),
+                beatActions: CLIFT.beatActions.getState(),
                 audioGain: CLIFT.audio.gain,
                 snapshots: CLIFT.snapshots.slots,
                 text: {
@@ -88,10 +87,9 @@
             });
 
             if (data.postfx) CLIFT.output.setOptions(data.postfx);
-            if (data.auto) {
-                if (CLIFT.automation.rates.includes(data.auto.rate)) CLIFT.automation.rate = data.auto.rate;
-                Object.assign(CLIFT.automation.options, data.auto.options || {});
-            }
+            if (data.auto) CLIFT.director.setState(data.auto);
+            if (data.fx) CLIFT.fx.setState(data.fx);
+            if (data.beatActions) CLIFT.beatActions.setState(data.beatActions);
             if (typeof data.audioGain === 'number') CLIFT.audio.setGain(CLIFT.util.clamp(data.audioGain, 0.1, 8));
             if (data.snapshots) CLIFT.snapshots.setAll(data.snapshots);
             if (data.text) {

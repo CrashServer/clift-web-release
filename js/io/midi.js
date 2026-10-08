@@ -30,6 +30,12 @@
         range('speedB', 'Speed deck B', v => e().setDeckSpeed && e().setDeckSpeed(1, v)),
         range('pulseA', 'Pulse deck A', v => e().setDeckPulse && e().setDeckPulse(0, v)),
         range('pulseB', 'Pulse deck B', v => e().setDeckPulse && e().setDeckPulse(1, v)),
+        range('feedback', 'Feedback amount', v => CLIFT.fx.set('feedback', Math.round(v * 97) / 100)),
+        range('fbZoom', 'Trail zoom', v => CLIFT.fx.set('fbZoom', Math.round((v - 0.5) * 40) / 200)),
+        range('fbRotate', 'Trail spin', v => CLIFT.fx.set('fbRotate', Math.round((v - 0.5) * 40) / 20)),
+        range('bassZoom', 'Bass zoom', v => CLIFT.fx.set('bassZoom', v)),
+        range('hueSpeed', 'Hue cycle', v => CLIFT.fx.set('hueSpeed', v)),
+        range('intensity', 'Full Auto intensity', v => { CLIFT.director.intensity = v; CLIFT.events.emit('state'); }),
         range('glow', 'Post-FX glow', v => CLIFT.output.set('glow', Math.round(v * 40) / 10)),
         range('gain', 'Audio gain', v => CLIFT.audio.setGain(Math.round((0.1 + v * v * 7.9) * 10) / 10)),
 
@@ -54,6 +60,18 @@
         trigger('invert', 'Invert FG/BG', () => { e().invertColors = !e().invertColors; CLIFT.events.emit('state'); }),
         trigger('auto', 'Full Auto on/off', () => CLIFT.automation.toggle()),
         trigger('tap', 'Tap tempo', () => e().tap()),
+        trigger('strobe', 'Strobe hit', () => CLIFT.fx.hit('strobe')),
+        trigger('invertHit', 'Invert flash', () => CLIFT.fx.hit('invert')),
+        trigger('punch', 'Zoom punch', () => CLIFT.fx.hit('punch')),
+        trigger('hueJump', 'Hue jump', () => CLIFT.fx.hit('hueJump')),
+        trigger('burst', 'Feedback burst', () => CLIFT.fx.hit('burst')),
+        trigger('gridNext', 'Next grid split', () => CLIFT.fx.stepGrid(1)),
+        trigger('gridShuffle', 'Random grid split', () => CLIFT.fx.hit('grid')),
+        trigger('lookNext', 'Next FX look', () => {
+            const n = CLIFT.fx.lookNames;
+            CLIFT.fx.applyLook(n[(n.indexOf(CLIFT.fx.look) + 1) % n.length]);
+        }),
+        trigger('feedbackToggle', 'Feedback on/off', () => CLIFT.fx.toggleFeedback()),
         trigger('text', 'Text overlay on/off', () => CLIFT.textOverlay && CLIFT.textOverlay.toggle()),
         ...[1, 2, 3, 4, 5, 6, 7, 8].map(n => trigger(`snap${n}`, `Snapshot ${n}`, () => CLIFT.snapshots && CLIFT.snapshots.recall(n - 1)))
     ];

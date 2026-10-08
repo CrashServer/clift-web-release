@@ -209,24 +209,31 @@
             return sum / ((end - start) * 255);
         },
 
-        // Synthetic spectrum: four-on-the-floor kick, snare on 2 & 4, offbeat hats.
+        // Synthetic track: four-on-the-floor kick, snare on 2 & 4, offbeat hats,
+        // arranged in a 64-beat loop (32 full, 16 lighter groove, 8 breakdown,
+        // 8 riser, then the drop) so the Director has sections to follow.
         synthesizeDemo(clock) {
             const bins = this.bins;
             const phase = clock.phase;
             const beatInBar = clock.count % 4;
+            const pos = clock.count % 64;
             const t = clock.time * 0.001;
-            const kick = Math.exp(-phase * 7);
-            const snare = (beatInBar === 1 || beatInBar === 3) ? Math.exp(-phase * 9) : 0;
-            const hat = Math.exp(-((phase + 0.5) % 1) * 14);
+            const breakdown = pos >= 48 && pos < 56;
+            const riser = pos >= 56 ? (pos - 56 + phase) / 8 : 0;
+            const groove = pos >= 32 && pos < 48 ? 0.6 : 1;
+            const kick = breakdown || riser ? 0 : Math.exp(-phase * 7) * groove;
+            const snare = (beatInBar === 1 || beatInBar === 3) && !breakdown ? Math.exp(-phase * 9) * groove : 0;
+            const hat = breakdown ? 0 : Math.exp(-(((phase * (riser ? 2 : 1)) + 0.5) % 1) * 14);
             const binHz = this.sampleRate / FFT_SIZE;
 
             for (let i = 0; i < BIN_COUNT; i++) {
                 const hz = i * binHz;
                 let v = 0;
-                if (hz < 140) v += 230 * kick + 40;
+                if (hz < 140) v += 230 * kick + (breakdown ? 10 : 40);
                 else if (hz < 400) v += 90 * kick + 60 + 30 * Math.sin(t * 0.7 + i * 0.3);
-                if (hz > 300 && hz < 3000) v += 70 + 50 * Math.sin(t * 1.3 + hz * 0.004) + 120 * snare;
+                if (hz > 300 && hz < 3000) v += (breakdown ? 50 : 70) + 50 * Math.sin(t * 1.3 + hz * 0.004) + 120 * snare;
                 if (hz > 5000 && hz < 14000) v += 40 + 130 * hat;
+                if (riser && hz > 1000 && hz < 1000 + riser * 12000) v += 140 * riser;
                 v *= 1 - Math.min(0.85, hz / 20000);
                 v += Math.random() * 18;
                 bins[i] = CLIFT.util.clamp(v * this.gain, 0, 255);
@@ -316,6 +323,7 @@
 
             this.detectBeat(clock.time);
             const bands = this.calculateBandLevels();
+            const raw = { volume: bands.overall, bass: bands.bass }; // before auto-level
             if (this.autoLevel) {
                 for (const k in bands) {
                     this.bandPeaks[k] = Math.max(bands[k], (this.bandPeaks[k] || 0.2) * 0.997, 0.08);
@@ -336,6 +344,7 @@
                     lastDetected: bd.lastBeat
                 },
                 volume: bands.overall,
+                raw,
                 energy: bd.energy,
                 bpm: this.detectedBPM || clock.bpm,
                 advanced,

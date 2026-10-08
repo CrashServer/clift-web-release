@@ -262,6 +262,19 @@ input.full { width: 100%; margin: 4px 0; }
 .snap.filled { color: var(--fg); border-style: solid; border-color: var(--line-strong); background: #0b2612; }
 .snap.flash { background: var(--green); color: #000; }
 
+.beat-actions { display: grid; grid-template-columns: 1fr auto; gap: 3px 6px; align-items: center; margin: 4px 0; }
+.beat-actions label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.beat-actions input { accent-color: var(--green); margin: 0; }
+.beat-actions select { min-height: 22px; padding: 0 4px; font-size: 11px; }
+.auto-status { display: flex; gap: 8px; align-items: center; margin: 4px 0 6px; font-size: 11px; color: var(--dim); }
+.auto-status .sec { color: #000; background: var(--dim); padding: 0 6px; text-transform: uppercase; letter-spacing: 0.08em; }
+.auto-status .sec.break { background: #2a7fff; }
+.auto-status .sec.groove { background: var(--green); }
+.auto-status .sec.build { background: var(--yellow); }
+.auto-status .sec.peak { background: var(--red); }
+.auto-status .bar { flex: 1; height: 6px; background: #0b2612; position: relative; }
+.auto-status .bar i { position: absolute; inset: 0 auto 0 0; background: var(--green); }
+
 .midi-table { display: grid; grid-template-columns: 1fr auto auto auto; gap: 3px 8px; align-items: center; margin-bottom: 10px; }
 .midi-table .kind { color: var(--dim); font-size: 10px; text-transform: uppercase; }
 .midi-table .bind { color: var(--yellow); min-width: 110px; text-align: right; }

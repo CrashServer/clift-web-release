@@ -52,8 +52,20 @@ permission and also works when the page is opened from disk (`file://`).
   or play an audio file (drop it onto the page). 64-band log spectrum, 5 bands,
   beat detection, tempo estimation and auto-level (keeps quiet inputs and highs lively)
 - **Tempo**: BPM clock, tap tempo (re-syncs the downbeat), sync to detected BPM
-- **Full Auto**: beat-synced scene / effect / color changes; new scenes are always
-  cued on the off-air deck and crossfaded in
+- **Visual FX** (GPU, on the whole image): video **feedback** (trails, tunnels, smears with
+  zoom / spin / hue drift), **grid split** (tiles, mirrored tiles, kaleidoscope 4-12),
+  bass zoom, spin, wave, pixelate, hue cycling, posterize, plus 10 one-click **looks**
+  (trails, tunnel, melt, mirror, tiles, kaleido, acid, mosaic, storm...)
+- **Hits**: strobe, invert flash, zoom punch, hue jump, feedback burst, grid shuffle -
+  from buttons, MIDI pads, or automatically **on beat**
+- **On beat**: invert / strobe / punch / hue jump / burst / grid shuffle / color change /
+  effect change / scene change, each every 1-32 beats, counted on the BPM clock or on
+  detected beats
+- **Full Auto (the Director)**: follows the music instead of a timer. It tracks
+  breakdowns, build-ups, peaks and drops, changes on phrase boundaries (8-64 beats), picks
+  scenes whose energy fits the moment (no repeats), long dissolves in breakdowns, cuts at
+  peaks, a strobe + cut on the drop, matching FX looks and color palettes. Intensity goes
+  from calm to wild; you choose what it may change
 - **Speed & Pulse** on every deck: Speed runs the scene 0.25x-4x, Pulse lets bass and
   beats push the scene forward and flash its colors, so every scene moves with the music.
   Scenes that have their own knobs also get Param 1-3
@@ -89,6 +101,7 @@ Press **H** in the app for the full list. The essentials:
 | O | record | | F / Shift+F | fullscreen / projector window |
 | U | hide / show the interface | | W | live-coding server |
 | Shift+1 … 8 | recall snapshot | | L | text overlay |
+| G / Shift+G | next grid split / grid off | | Y / Shift+Y | feedback on/off / reset FX |
 
 Digits use the physical number keys, so they also work on AZERTY keyboards without Shift.
 
@@ -113,7 +126,7 @@ js/
 │   ├── custom-scenes.js editor-made scenes (ids 1000+), persisted in localStorage
 │   ├── engine.js        BPM clock, decks, mixing, effects, ASCII renderer
 │   ├── render-modes.js  experimental render modes
-│   ├── automation.js    Full Auto
+│   ├── automation.js    Full Auto (the Director)
 │   ├── session.js       snapshot / restore / autosave / file import-export
 │   ├── snapshots.js     8 recallable looks
 │   ├── text-overlay.js  text drawn over the output
@@ -121,7 +134,8 @@ js/
 ├── audio/
 │   ├── audio.js         sources (demo / input / file), spectrum, bands, beats
 │   └── analysis.js      advanced features (spectral shape, buildup/drop...)
-├── fx/                  ASCII effects + output stage (output.js: GPU text, post-FX)
+├── fx/                  ASCII effects, fx-rack.js (visual FX + hits), beat-actions.js,
+│                        output.js (GPU text, visual FX + feedback passes, post-FX)
 ├── scenes/              one file per bank (_helpers.js loads first)
 ├── lib/                 3D ASCII renderer used by the 3D scenes
 ├── io/                  recorder, WebSocket client, MIDI, projector window
@@ -132,7 +146,8 @@ js/
 Each frame: advance the BPM clock and each deck's scene clock → analyse audio → render
 deck A and B into character buffers → color them → mix through the crossfader → apply the
 ASCII effect and text overlay → draw (GPU glyph shader, canvas 2D, or a render mode) →
-post-FX when enabled → mirror to the projector window if open.
+visual FX pass with feedback (when any is on) → color FX / CRT post → mirror to the
+projector window if open.
 
 Open with `index.html?debug` to get verbose logs in the console.
 

@@ -32,7 +32,8 @@
                 colorMode: e.colorMode,
                 colorEnabled: e.colorEnabled,
                 invertColors: e.invertColors,
-                postfx: CLIFT.output.getOptions()
+                postfx: CLIFT.output.getOptions(),
+                fx: CLIFT.fx.getState()
             };
         },
 
@@ -67,6 +68,7 @@
             e.colorEnabled = s.colorEnabled;
             e.invertColors = s.invertColors;
             CLIFT.output.setOptions(s.postfx);
+            if (s.fx) CLIFT.fx.setState(s.fx);
             CLIFT.events.emit('state');
             CLIFT.events.emit('scene', 0);
             CLIFT.events.emit('scene', 1);

@@ -55,6 +55,87 @@
             gl_FragColor = vec4(mix(bg, fg, a), 1.0);
         }`;
 
+    // Visual FX pass (CLIFT.fx): kaleidoscope / grid split / zoom / rotate / wave /
+    // pixelate on the scene, then video feedback from the previous frame.
+    const FX_FS = `
+        #ifdef GL_FRAGMENT_PRECISION_HIGH
+        precision highp float;
+        #else
+        precision mediump float;
+        #endif
+        uniform sampler2D u_scene;
+        uniform bool u_sceneFlip;
+        uniform sampler2D u_prev;      // previous FX output (framebuffer, bottom-up)
+        uniform vec2 u_resolution;
+        uniform vec2 u_grid;
+        uniform bool u_gridMirror;
+        uniform float u_kaleido;
+        uniform float u_zoom;
+        uniform float u_rotate;
+        uniform float u_wave;
+        uniform float u_pixelate;
+        uniform float u_time;
+        uniform float u_feedback;
+        uniform float u_fbZoom;
+        uniform float u_fbRotate;
+        uniform float u_fbHue;
+        varying vec2 v_uv;
+
+        vec3 hueShift(vec3 c, float a) {
+            const vec3 k = vec3(0.57735);
+            float ca = cos(a);
+            return c * ca + cross(k, c) * sin(a) + k * dot(k, c) * (1.0 - ca);
+        }
+
+        vec2 rot(vec2 p, float a) {
+            float s = sin(a), c = cos(a);
+            return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+        }
+
+        void main() {
+            vec2 uv = v_uv;
+            vec2 aspect = vec2(u_resolution.x / u_resolution.y, 1.0);
+
+            if (u_kaleido > 0.5) {
+                vec2 p = (uv - 0.5) * aspect;
+                float r = length(p);
+                float seg = 6.2831853 / u_kaleido;
+                float a = mod(atan(p.y, p.x), seg);
+                a = abs(a - seg * 0.5);
+                uv = vec2(cos(a), sin(a)) * r / aspect + 0.5;
+            }
+            if (u_grid.x > 1.0 || u_grid.y > 1.0) {
+                vec2 g = uv * u_grid;
+                vec2 cell = floor(g);
+                uv = fract(g);
+                if (u_gridMirror) uv = mix(uv, 1.0 - uv, mod(cell, 2.0));
+            }
+            vec2 p = rot((uv - 0.5) * aspect, u_rotate) / u_zoom;
+            uv = p / aspect + 0.5;
+            if (u_wave > 0.0) {
+                uv.x += sin(uv.y * 18.0 + u_time * 3.0) * u_wave * 0.03;
+                uv.y += cos(uv.x * 14.0 + u_time * 2.0) * u_wave * 0.02;
+            }
+            if (u_pixelate > 0.0) {
+                vec2 cells = vec2(u_pixelate) * aspect;
+                uv = (floor(uv * cells) + 0.5) / cells;
+            }
+            uv = 1.0 - abs(mod(uv, 2.0) - 1.0); // mirrored repeat fills the edges
+            vec3 color = texture2D(u_scene, u_sceneFlip ? vec2(uv.x, 1.0 - uv.y) : uv).rgb;
+
+            if (u_feedback > 0.0) {
+                vec2 q = rot((v_uv - 0.5) * aspect, u_fbRotate) / (1.0 + u_fbZoom);
+                vec2 puv = q / aspect + 0.5;
+                vec3 prev = vec3(0.0);
+                if (puv.x >= 0.0 && puv.x <= 1.0 && puv.y >= 0.0 && puv.y <= 1.0) {
+                    prev = texture2D(u_prev, vec2(puv.x, 1.0 - puv.y)).rgb;
+                }
+                if (u_fbHue != 0.0) prev = hueShift(prev, u_fbHue);
+                color = max(color, prev * u_feedback);
+            }
+            gl_FragColor = vec4(color, 1.0);
+        }`;
+
     const POST_FS = `
         precision mediump float;
         uniform sampler2D u_tex;
@@ -69,7 +150,17 @@
         uniform float u_vignette;
         uniform float u_chroma;
         uniform bool u_invert;
+        uniform float u_hue;           // color FX, applied with or without CRT post-FX
+        uniform float u_posterize;
+        uniform float u_fxInvert;
+        uniform float u_strobe;
         varying vec2 v_uv;
+
+        vec3 hueShift(vec3 c, float a) {
+            const vec3 k = vec3(0.57735);
+            float ca = cos(a);
+            return c * ca + cross(k, c) * sin(a) + k * dot(k, c) * (1.0 - ca);
+        }
 
         vec3 tex(vec2 uv) {
             return texture2D(u_tex, u_flipY ? vec2(uv.x, 1.0 - uv.y) : uv).rgb;
@@ -109,6 +200,10 @@
                     color *= 1.0 - u_vignette * dot(d, d) * 2.2;
                 }
             }
+            if (u_hue != 0.0) color = hueShift(color, u_hue * 6.2831853);
+            if (u_posterize > 0.0) color = floor(color * u_posterize + 0.5) / u_posterize;
+            color = mix(color, 1.0 - color, u_fxInvert);
+            color = mix(color, vec3(1.0), u_strobe * 0.85);
             gl_FragColor = vec4(color, 1.0);
         }`;
 
@@ -200,7 +295,7 @@
         resize({ width, height, dpr }) {
             this.canvas.width = Math.round(width * dpr);
             this.canvas.height = Math.round(height * dpr);
-            this.fbSize = null; // framebuffer is recreated lazily
+            // render targets are reallocated lazily (bindTarget compares sizes)
         },
 
         // ---- GL setup ---------------------------------------------------------
@@ -240,7 +335,8 @@
 
             this.post = program(POST_FS);
             this.ascii = program(ASCII_FS);
-            if (!this.post || !this.ascii) return false;
+            this.fxProg = program(FX_FS);
+            if (!this.post || !this.ascii || !this.fxProg) return false;
 
             const buffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -261,10 +357,12 @@
                 source: texture(gl.LINEAR),
                 grid: texture(gl.NEAREST),
                 atlas: texture(gl.LINEAR),
-                palette: texture(gl.NEAREST),
-                frame: texture(gl.LINEAR)
+                palette: texture(gl.NEAREST)
             };
-            this.framebuffer = gl.createFramebuffer();
+            // Render targets: the ASCII scene, and two feedback buffers used ping-pong.
+            const target = () => ({ tex: texture(gl.LINEAR), fb: gl.createFramebuffer(), key: '' });
+            this.targets = { scene: target(), fb: [target(), target()] };
+            this.fbIndex = 0;
             this.maxTexture = Math.min(2048, gl.getParameter(gl.MAX_TEXTURE_SIZE));
             this.glyphCanvas = document.createElement('canvas');
             this.glyphCtx = this.glyphCanvas.getContext('2d');
@@ -370,8 +468,8 @@
             gl.bindTexture(gl.TEXTURE_2D, this.tex.grid);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
 
-            const usePost = this.options.enabled;
-            if (usePost) this.bindFramebuffer(); else gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            const usePipeline = this.options.enabled || CLIFT.fx.active;
+            if (usePipeline) this.bindTarget(this.targets.scene); else gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
             const { program, u } = this.ascii;
             gl.useProgram(program);
@@ -391,31 +489,84 @@
             gl.uniform1i(u.u_invert, engine.invertColors ? 1 : 0);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-            if (usePost) {
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                this.postPass(this.tex.frame, true);
-            }
+            if (usePipeline) this.pipeline(this.targets.scene.tex, true);
             this.show(this.canvas);
             this.present();
         },
 
-        bindFramebuffer() {
+        // Bind a render target, (re)allocating it at the canvas size. Returns true if it was (re)created.
+        bindTarget(t) {
             const gl = this.gl;
             const key = `${this.canvas.width}x${this.canvas.height}`;
-            if (this.fbSize !== key) {
-                this.fbSize = key;
-                gl.bindTexture(gl.TEXTURE_2D, this.tex.frame);
+            let fresh = false;
+            if (t.key !== key) {
+                t.key = key;
+                gl.bindTexture(gl.TEXTURE_2D, t.tex);
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.canvas.width, this.canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-                gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.tex.frame, 0);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t.tex, 0);
+                fresh = true;
             } else {
-                gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
             }
+            gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            return fresh;
+        },
+
+        // Visual FX (if any) into a feedback buffer, then color FX / CRT post to the screen.
+        pipeline(srcTex, srcFlip) {
+            const gl = this.gl;
+            let tex = srcTex, flip = srcFlip;
+            if (CLIFT.fx.active) {
+                const cur = this.targets.fb[this.fbIndex];
+                const prev = this.targets.fb[1 - this.fbIndex];
+                // Start feedback from black when the FX switch on (or after a resize).
+                if (this.bindTarget(prev) || !this.fxWasActive) {
+                    gl.clearColor(0, 0, 0, 1);
+                    gl.clear(gl.COLOR_BUFFER_BIT);
+                }
+                this.bindTarget(cur);
+                this.fxPass(srcTex, srcFlip, prev.tex);
+                tex = cur.tex;
+                flip = true;
+                this.fbIndex = 1 - this.fbIndex;
+            }
+            this.fxWasActive = CLIFT.fx.active;
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            this.postPass(tex, flip);
+        },
+
+        fxPass(srcTex, srcFlip, prevTex) {
+            const gl = this.gl;
+            const f = CLIFT.fx.u;
+            const { program, u } = this.fxProg;
+            gl.useProgram(program);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, srcTex);
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, prevTex);
+            gl.uniform1i(u.u_scene, 0);
+            gl.uniform1i(u.u_prev, 1);
+            gl.uniform1i(u.u_sceneFlip, srcFlip ? 1 : 0);
+            gl.uniform2f(u.u_resolution, this.canvas.width, this.canvas.height);
+            gl.uniform2f(u.u_grid, f.gridCols, f.gridRows);
+            gl.uniform1i(u.u_gridMirror, f.gridMirror ? 1 : 0);
+            gl.uniform1f(u.u_kaleido, f.kaleido);
+            gl.uniform1f(u.u_zoom, f.zoom);
+            gl.uniform1f(u.u_rotate, f.rotate);
+            gl.uniform1f(u.u_wave, f.wave);
+            gl.uniform1f(u.u_pixelate, f.pixelate);
+            gl.uniform1f(u.u_time, performance.now() / 1000);
+            gl.uniform1f(u.u_feedback, f.feedback);
+            gl.uniform1f(u.u_fbZoom, f.fbZoom);
+            gl.uniform1f(u.u_fbRotate, f.fbRotate);
+            gl.uniform1f(u.u_fbHue, f.fbHue);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         },
 
         // A 2D source canvas (canvas-path ASCII or an experimental render mode).
         renderCanvas(source) {
-            const needsOutput = (this.options.enabled && this.gl) || CLIFT.recorder.recording;
+            const needsOutput = (this.gl && (this.options.enabled || CLIFT.fx.active)) || CLIFT.recorder.recording;
             if (!needsOutput) {
                 this.show(source);
                 this.present();
@@ -426,8 +577,7 @@
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, this.tex.source);
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, source);
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                this.postPass(this.tex.source, false);
+                this.pipeline(this.tex.source, false);
             } else {
                 this.ctx2d.drawImage(source, 0, 0, this.canvas.width, this.canvas.height);
             }
@@ -456,6 +606,11 @@
             gl.uniform1f(u.u_vignette, o.vignette);
             gl.uniform1f(u.u_chroma, o.chroma);
             gl.uniform1i(u.u_invert, o.invert ? 1 : 0);
+            const f = CLIFT.fx.u;
+            gl.uniform1f(u.u_hue, f ? f.hue : 0);
+            gl.uniform1f(u.u_posterize, f ? f.posterize : 0);
+            gl.uniform1f(u.u_fxInvert, f ? f.invert : 0);
+            gl.uniform1f(u.u_strobe, f ? f.strobe : 0);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         },
 

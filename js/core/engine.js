@@ -159,7 +159,8 @@
         }
 
         frame(now) {
-            const dt = Math.min(100, now - this.lastFrameTime);
+            // Clamp so a background tab doesn't jump the clock, but keep beats at low fps.
+            const dt = Math.min(250, now - this.lastFrameTime);
             this.lastFrameTime = now;
 
             this.fpsFrames++;
@@ -173,6 +174,8 @@
                 this.advanceClock(dt);
                 this.audioFrame = CLIFT.audio.update(this.clock);
                 this.advanceDeckTime(dt);
+                CLIFT.director.update(dt, this.audioFrame);
+                CLIFT.fx.update(dt, this.audioFrame);
                 this.updateTransition();
 
                 this.renderDeck(this.decks[0], this.bufferA, this.colorBufferA);
