@@ -25,8 +25,17 @@
             primaryColor: primary,
             secondaryColor: secondary,
             gradientType: gradient,
-            params: { param1: 0.5, param2: 0.5, param3: 0.5 }
+            params: { param1: 0.5, param2: 0.5, param3: 0.5 },
+            speed: 0.5,   // 0..1 -> 0.25x..4x scene time
+            pulse: 0.25,  // 0..1 -> how much bass / beats push scene time forward
+            time: 10000,  // the deck's own scene clock (ms)
+            state: {}     // persistent params object for the current scene (see buildParams)
         };
+    }
+
+    // Speed knob 0..1 -> time multiplier 0.25..4 (0.5 = normal).
+    function speedFactor(v) {
+        return Math.pow(2, (v - 0.5) * 4);
     }
 
     class CLIFTEngine {
@@ -123,6 +132,7 @@
             this.height = height;
             this.allocateBuffers();
             this.updateCellMetrics();
+            for (const deck of this.decks) deck.state = {}; // scene state is sized to the grid
             if (window.CLIFT3DRenderer) window.CLIFT3DRenderer.initialized = false;
             CLIFT.catalog.broken.clear();
             CLIFT.events.emit('state');
@@ -162,6 +172,7 @@
             if (!this.paused) {
                 this.advanceClock(dt);
                 this.audioFrame = CLIFT.audio.update(this.clock);
+                this.advanceDeckTime(dt);
                 this.updateTransition();
 
                 this.renderDeck(this.decks[0], this.bufferA, this.colorBufferA);
@@ -197,6 +208,26 @@
                 c.count++;
                 CLIFT.events.emit('clock-beat', c.count);
             }
+        }
+
+        // Each deck has its own scene clock: Speed scales it, Pulse lets bass and
+        // beats push it forward, so every scene moves with the music.
+        advanceDeckTime(dt) {
+            const a = this.audioFrame;
+            const drive = a.bands.bass * 1.5 + a.beat.intensity * 3;
+            for (const deck of this.decks) {
+                deck.time += dt * speedFactor(deck.speed) * (1 + deck.pulse * drive);
+            }
+        }
+
+        setDeckSpeed(index, v) {
+            this.decks[index].speed = clamp(v, 0, 1);
+            CLIFT.events.emit('state');
+        }
+
+        setDeckPulse(index, v) {
+            this.decks[index].pulse = clamp(v, 0, 1);
+            CLIFT.events.emit('state');
         }
 
         setBPM(bpm) {
@@ -239,7 +270,9 @@
 
         setScene(sceneId, deckIndex = this.activeDeck) {
             if (!CLIFT.catalog.resolve(sceneId)) return false;
-            this.decks[deckIndex].sceneId = sceneId;
+            const deck = this.decks[deckIndex];
+            if (deck.sceneId !== sceneId) deck.state = {};
+            deck.sceneId = sceneId;
             CLIFT.events.emit('state');
             CLIFT.events.emit('scene', deckIndex);
             return true;
@@ -292,22 +325,25 @@
             if (p >= 1) this.transition = null;
         }
 
+        // Scenes keep state on the params object (params._cells, params._particles...),
+        // so each deck reuses one object per scene instead of creating a new one
+        // every frame. It is reset when the deck's scene or the grid size changes.
         buildParams(deck) {
             const audio = this.audioFrame;
-            return {
-                beat: this.clock.phase,
-                beatPhase: this.clock.phase,
-                beatCount: this.clock.count,
-                bpm: this.bpm,
-                frame: this.frameCount,
-                audio: audio.spectrum,
-                audioData: audio.spectrum,
-                audioInfo: audio,
-                deckParams: deck.params,
-                param1: deck.params.param1,
-                param2: deck.params.param2,
-                param3: deck.params.param3
-            };
+            const p = deck.state;
+            p.beat = this.clock.phase;
+            p.beatPhase = this.clock.phase;
+            p.beatCount = this.clock.count;
+            p.bpm = this.bpm;
+            p.frame = this.frameCount;
+            p.audio = audio.spectrum;
+            p.audioData = audio.spectrum;
+            p.audioInfo = audio;
+            p.deckParams = deck.params;
+            p.param1 = deck.params.param1;
+            p.param2 = deck.params.param2;
+            p.param3 = deck.params.param3;
+            return p;
         }
 
         renderDeck(deck, buffer, colorBuffer) {
@@ -317,7 +353,7 @@
             const fn = CLIFT.catalog.resolve(id);
             if (fn && !CLIFT.catalog.broken.has(id)) {
                 try {
-                    fn(buffer, this.width, this.height, this.clock.time, this.buildParams(deck));
+                    fn(buffer, this.width, this.height, deck.time, this.buildParams(deck));
                 } catch (e) {
                     CLIFT.catalog.broken.add(id);
                     CLIFT.warn(`scene ${id} (${CLIFT.catalog.name(id)}) crashed and was disabled:`, e);
@@ -345,7 +381,8 @@
 
         colorize(deck, buffer, colorBuffer) {
             const time = this.clock.time;
-            const lift = this.audioFrame.volume * 0.3;
+            // Volume shifts the gradient a little; with Pulse, beats flash the secondary color.
+            const lift = this.audioFrame.volume * 0.3 + deck.pulse * this.audioFrame.beat.intensity * 0.9;
             const { primaryColor: p, secondaryColor: s, gradientType: g } = deck;
             const mode = this.colorMode;
             for (let y = 0; y < this.height; y++) {

@@ -227,6 +227,9 @@ body.panel-closed .panel { display: none; }
 .scene-item .tag-b { color: var(--deck-b); }
 .scene-item.broken .nm { color: var(--red); text-decoration: line-through; }
 .scene-item .bank-hint { color: var(--dim); font-size: 10px; flex: none; }
+.scene-item .fav { color: var(--dim); width: 14px; flex: none; text-align: center; opacity: 0.35; }
+.scene-item:hover .fav { opacity: 1; }
+.scene-item .fav.on { color: var(--yellow); opacity: 1; }
 
 .swatches { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin: 3px 0 6px; }
 .swatch {

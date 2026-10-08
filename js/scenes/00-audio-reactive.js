@@ -749,12 +749,12 @@ CLIFTScenes[7] = function(buffer, width, height, time, params) {
 CLIFTScenes[8] = function(buffer, width, height, time, params) {
     const audio = params.audio || new Float32Array(64).fill(0.3);
     
-    // Use global storage instead of params for persistence
-    if (!window._cliftRipples) {
-        window._cliftRipples = [];
+    // Per-deck state (params persists between frames)
+    if (!params._ripples) {
+        params._ripples = [];
     }
     
-    const ripples = window._cliftRipples;
+    const ripples = params._ripples;
     
     // Create new ripples more frequently and with lower threshold
     const avgAudio = audio.reduce((a, b) => a + b, 0) / audio.length;

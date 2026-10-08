@@ -222,6 +222,10 @@
             $('scene-list').onclick = (ev) => {
                 const item = ev.target.closest('.scene-item');
                 if (!item) return;
+                if (ev.target.closest('.fav')) {
+                    CLIFT.catalog.toggleFavorite(Number(item.dataset.id));
+                    return;
+                }
                 const deck = ev.shiftKey ? 1 - this.e.activeDeck : this.e.activeDeck;
                 this.e.setScene(Number(item.dataset.id), deck);
             };
@@ -243,6 +247,13 @@
                 CLIFT.events.emit('state');
             };
             $('random-colors').onclick = () => this.e.randomizeColors();
+            for (const [id, setter] of [['deck-speed', 'setDeckSpeed'], ['deck-pulse', 'setDeckPulse']]) {
+                $(id).oninput = (ev) => {
+                    this.e.decks[this.e.activeDeck][id === 'deck-speed' ? 'speed' : 'pulse'] = Number(ev.target.value);
+                    this.syncDeckKnobs();
+                };
+                $(id).onchange = (ev) => this.e[setter](this.e.activeDeck, Number(ev.target.value));
+            }
             for (const p of ['param1', 'param2', 'param3']) {
                 $(p).oninput = (ev) => {
                     this.e.deck().params[p] = Number(ev.target.value);
@@ -313,6 +324,7 @@
                 gain.nextElementSibling.textContent = Number(gain.value).toFixed(1);
             };
             gain.onchange = () => CLIFT.events.emit('state');
+            $('auto-level').onchange = (ev) => audio.setAutoLevel(ev.target.checked);
             this.meterBars = Array.from($('meters').querySelectorAll('.meter i'));
         },
 
@@ -655,10 +667,17 @@
                 for (const b of $(`${which}-swatches`).children) b.classList.toggle('on', Number(b.dataset.color) === current);
             }
             $('gradient-select').value = deck.gradientType;
+            this.syncDeckKnobs();
             for (const p of ['param1', 'param2', 'param3']) {
                 $(p).value = deck.params[p];
                 $(`${p}-val`).textContent = deck.params[p].toFixed(2);
             }
+            const usesParams = CLIFT.catalog.usesParams(deck.sceneId);
+            $('param-sliders').hidden = !usesParams;
+            $('param-hint').textContent = usesParams
+                ? 'Params 1-3 tune this scene (speed, density, shape…).'
+                : 'Speed and Pulse work on every scene. This one has no extra params.';
+            $('auto-level').checked = CLIFT.audio.autoLevel;
 
             $('effect-select').value = e.currentEffect;
             $('render-select').value = e.renderMode;
@@ -731,6 +750,14 @@
             }
         },
 
+        syncDeckKnobs() {
+            const deck = this.e.deck();
+            $('deck-speed').value = deck.speed;
+            $('deck-speed-val').textContent = `${Math.pow(2, (deck.speed - 0.5) * 4).toFixed(2)}x`;
+            $('deck-pulse').value = deck.pulse;
+            $('deck-pulse-val').textContent = deck.pulse.toFixed(2);
+        },
+
         renderSceneList() {
             const e = this.e;
             const query = $('scene-search').value;
@@ -752,7 +779,11 @@
                     const nm = document.createElement('span');
                     nm.className = 'nm';
                     nm.textContent = CLIFT.catalog.name(id);
-                    b.append(num, nm);
+                    const fav = document.createElement('span');
+                    fav.className = 'fav';
+                    fav.textContent = '★';
+                    fav.title = 'Favorite';
+                    b.append(fav, num, nm);
                     if (searching) {
                         const hint = document.createElement('span');
                         hint.className = 'bank-hint';
@@ -767,6 +798,7 @@
             for (const item of list.children) {
                 const id = Number(item.dataset.id);
                 item.classList.toggle('broken', CLIFT.catalog.broken.has(id));
+                item.querySelector('.fav').classList.toggle('on', CLIFT.catalog.favorites.has(id));
                 for (const [i, cls] of [[0, 'tag-a'], [1, 'tag-b']]) {
                     let tag = item.querySelector('.' + cls);
                     const on = e.decks[i].sceneId === id;

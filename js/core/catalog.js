@@ -4,10 +4,36 @@ Object.assign(CLIFT.catalog, {
     // Scenes that threw at runtime; the UI marks them.
     broken: new Set(),
 
-    // Built-in banks plus a "Custom" bank when the editors have produced scenes.
+    favorites: new Set(CLIFT.util.storage.get('clift-favorites', [])),
+
+    toggleFavorite(id) {
+        if (this.favorites.has(id)) this.favorites.delete(id); else this.favorites.add(id);
+        CLIFT.util.storage.set('clift-favorites', [...this.favorites]);
+        CLIFT.events.emit('catalog-changed');
+    },
+
+    // Built-in banks, then "Custom" (editor scenes) and "Favorites" when not empty.
+    // Favorites come last so a scene's home bank is still found first.
     allBanks() {
+        let banks = this.banks;
         const custom = CLIFT.custom.ids();
-        return custom.length ? this.banks.concat([{ name: 'Custom', ids: custom, custom: true }]) : this.banks;
+        if (custom.length) banks = banks.concat([{ name: 'Custom', ids: custom, custom: true }]);
+        const favs = [...this.favorites].filter(id => this.resolve(id)).sort((a, b) => a - b);
+        if (favs.length) banks = banks.concat([{ name: '★ Favorites', ids: favs, favorites: true }]);
+        return banks;
+    },
+
+    // Built-in banks only list each scene once; Favorites repeats them.
+    uniqueIds() {
+        return [...new Set(this.allIds())];
+    },
+
+    // Whether a scene reads the deck's Param 1-3 knobs.
+    usesParams(id) {
+        const fn = this.resolve(id);
+        if (!fn) return false;
+        if (fn.__usesParams === undefined) fn.__usesParams = /\bparam[123]\b/.test(fn.toString());
+        return fn.__usesParams;
     },
 
     name(id) {
@@ -33,7 +59,7 @@ Object.assign(CLIFT.catalog, {
 
     // Step through scenes in catalog order, crossing bank boundaries.
     step(id, dir) {
-        const ids = this.allIds();
+        const ids = this.uniqueIds();
         const i = ids.indexOf(id);
         return ids[CLIFT.util.wrap((i < 0 ? 0 : i) + dir, ids.length)];
     },
@@ -48,6 +74,6 @@ Object.assign(CLIFT.catalog, {
     search(query) {
         const q = query.trim().toLowerCase();
         if (!q) return [];
-        return this.allIds().filter(id => this.name(id).toLowerCase().includes(q) || String(id) === q);
+        return this.uniqueIds().filter(id => this.name(id).toLowerCase().includes(q) || String(id) === q);
     }
 });

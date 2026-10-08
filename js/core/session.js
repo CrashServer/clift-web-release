@@ -32,7 +32,9 @@
                     primaryColor: d.primaryColor,
                     secondaryColor: d.secondaryColor,
                     gradientType: d.gradientType,
-                    params: Object.assign({}, d.params)
+                    params: Object.assign({}, d.params),
+                    speed: d.speed,
+                    pulse: d.pulse
                 })),
                 postfx: CLIFT.output.getOptions(),
                 auto: {
@@ -78,6 +80,8 @@
                 deck.primaryColor = CLIFT.util.clamp(num(d.primaryColor, deck.primaryColor), 1, CLIFT.palette.count);
                 deck.secondaryColor = CLIFT.util.clamp(num(d.secondaryColor, deck.secondaryColor), 1, CLIFT.palette.count);
                 deck.gradientType = CLIFT.util.clamp(num(d.gradientType, deck.gradientType), 0, CLIFT.palette.gradients.length - 1);
+                if (typeof d.speed === 'number') deck.speed = CLIFT.util.clamp(d.speed, 0, 1);
+                if (typeof d.pulse === 'number') deck.pulse = CLIFT.util.clamp(d.pulse, 0, 1);
                 if (d.params) {
                     for (const k of ['param1', 'param2', 'param3']) deck.params[k] = CLIFT.util.clamp(num(d.params[k], 0.5), 0, 1);
                 }

@@ -58,6 +58,24 @@
 
         frame: null,
 
+        // Auto-level: scale each spectrum bin / band by its own slowly decaying
+        // peak so quiet inputs and high frequencies still reach the levels the
+        // scenes' thresholds expect.
+        autoLevel: CLIFT.util.storage.get('clift-auto-level', true),
+        peaks: new Float32Array(SPECTRUM_BANDS).fill(0.2),
+        bandPeaks: {},
+
+        setAutoLevel(on) {
+            this.autoLevel = !!on;
+            CLIFT.util.storage.set('clift-auto-level', this.autoLevel);
+            CLIFT.events.emit('state');
+        },
+
+        level(value, peak) {
+            if (value < 0.02) return 0; // keep silence silent
+            return Math.min(MAX_LEVEL, value * 0.3 + (value / peak) * 0.7);
+        },
+
         get live() {
             return this.source !== 'demo';
         },
@@ -288,11 +306,22 @@
             for (let i = 0; i < SPECTRUM_BANDS; i++) {
                 const [start, end] = this.spectrumBins[i];
                 // Kept just below 1: scenes index arrays with floor(level * length).
-                spectrum[i] = Math.min(MAX_LEVEL, Math.pow(this.avgBins(start, end), 0.8));
+                let v = Math.min(MAX_LEVEL, Math.pow(this.avgBins(start, end), 0.8));
+                if (this.autoLevel) {
+                    this.peaks[i] = Math.max(v, this.peaks[i] * 0.995, 0.08);
+                    v = this.level(v, this.peaks[i]);
+                }
+                spectrum[i] = v;
             }
 
             this.detectBeat(clock.time);
             const bands = this.calculateBandLevels();
+            if (this.autoLevel) {
+                for (const k in bands) {
+                    this.bandPeaks[k] = Math.max(bands[k], (this.bandPeaks[k] || 0.2) * 0.997, 0.08);
+                    bands[k] = this.level(bands[k], this.bandPeaks[k]);
+                }
+            }
             const advanced = this.calculateAdvancedFeatures(spectrum, bands);
             const hyperReactive = this.updateFeatureTracking(advanced, bands);
             const bd = this.beatDetector;

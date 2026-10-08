@@ -23,7 +23,8 @@
             colors: true,
             postfx: false,
             renderModes: false,
-            resolution: false
+            resolution: false,
+            favoritesOnly: false
         },
         optionLabels: {
             scenes: 'Scenes',
@@ -32,7 +33,8 @@
             colors: 'Colors',
             postfx: 'Post-FX',
             renderModes: 'Render modes',
-            resolution: 'Resolution'
+            resolution: 'Resolution',
+            favoritesOnly: 'Favorites only'
         },
 
         init(engine) {
@@ -56,7 +58,8 @@
             if (count % rate.scene === 0) {
                 const target = e.offAirDeck;
                 if (o.scenes) {
-                    const ids = CLIFT.catalog.allIds().filter(id => !CLIFT.catalog.broken.has(id));
+                    const pool = o.favoritesOnly && CLIFT.catalog.favorites.size ? [...CLIFT.catalog.favorites] : CLIFT.catalog.uniqueIds();
+                    const ids = pool.filter(id => !CLIFT.catalog.broken.has(id) && CLIFT.catalog.resolve(id));
                     e.setScene(pick(ids), target);
                     if (o.colors) e.randomizeColors(target);
                 }
