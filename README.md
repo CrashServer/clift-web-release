@@ -44,14 +44,26 @@ permission and also works when the page is opened from disk (`file://`).
 - **26 ASCII effects** (glitch, mirror, 3D tunnel, dither...) and **12 experimental
   render modes** (surface, particles, splines, 3D city, plasma, terminal...)
 - **Colors**: 10 color pairs (incl. inverse pairs), 10 gradients, Full / Mono / Accent modes, FG/BG invert
+- **GPU rendering**: the ASCII grid is drawn by a WebGL shader from a glyph atlas, with
+  post-FX in the same pipeline; falls back to canvas 2D (automatic on software-only WebGL,
+  or pick it under Output → Renderer)
 - **Post-FX** (WebGL): CRT tint, glow, scanlines, vignette, chromatic offset + presets
 - **Audio**: demo signal (no permission needed), live input with device selection,
   or play an audio file (drop it onto the page). 64-band log spectrum, 5 bands,
-  beat detection and tempo estimation
+  beat detection, tempo estimation and auto-level (keeps quiet inputs and highs lively)
 - **Tempo**: BPM clock, tap tempo (re-syncs the downbeat), sync to detected BPM
 - **Full Auto**: beat-synced scene / effect / color changes; new scenes are always
   cued on the off-air deck and crossfaded in
-- **Scene params**: 3 per-deck knobs that drive speed / density on scenes that use them
+- **Speed & Pulse** on every deck: Speed runs the scene 0.25x-4x, Pulse lets bass and
+  beats push the scene forward and flash its colors, so every scene moves with the music.
+  Scenes that have their own knobs also get Param 1-3
+- **Projector window** (Shift+F): a second window with only the visuals; drag it to the
+  projector, double-click for fullscreen. The main window keeps the controls and a preview
+- **MIDI**: map any knob, fader or pad with *Learn* (40 targets: crossfader, speed,
+  pulse, transitions, scene/bank stepping, effects, snapshots...); optional MIDI clock sync
+- **Snapshots**: 8 slots holding a complete look; Shift+click saves, click or Shift+1…8 recalls
+- **Text overlay** (L): big block letters, a plain line or a marquee, optionally pulsing on the beat
+- **Favorites**: star scenes in the browser; they get their own bank and Full Auto can stick to them
 - **Sessions**: autosaved locally (a reload brings you back), export / import JSON
   (old CLIFT Web session files load too)
 - **Recording**: records the visible output (post-FX and render modes included) to
@@ -74,8 +86,9 @@ Press **H** in the app for the full list. The essentials:
 | E / Shift+E | next / previous effect | | R / Shift+R | render mode / back to ASCII |
 | N / J / K | primary / secondary color / gradient | | P / D / S | post-FX / preset / tint |
 | A | audio input on/off | | Q | tap tempo |
-| O | record | | F | fullscreen |
+| O | record | | F / Shift+F | fullscreen / projector window |
 | U | hide / show the interface | | W | live-coding server |
+| Shift+1 … 8 | recall snapshot | | L | text overlay |
 
 Digits use the physical number keys, so they also work on AZERTY keyboards without Shift.
 
@@ -101,21 +114,25 @@ js/
 │   ├── engine.js        BPM clock, decks, mixing, effects, ASCII renderer
 │   ├── render-modes.js  experimental render modes
 │   ├── automation.js    Full Auto
-│   └── session.js       snapshot / restore / autosave / file import-export
+│   ├── session.js       snapshot / restore / autosave / file import-export
+│   ├── snapshots.js     8 recallable looks
+│   ├── text-overlay.js  text drawn over the output
+│   └── display.js       render size (main window or projector window)
 ├── audio/
 │   ├── audio.js         sources (demo / input / file), spectrum, bands, beats
 │   └── analysis.js      advanced features (spectral shape, buildup/drop...)
-├── fx/                  ASCII effects + post-FX output stage (postfx.js)
+├── fx/                  ASCII effects + output stage (output.js: GPU text, post-FX)
 ├── scenes/              one file per bank (_helpers.js loads first)
 ├── lib/                 3D ASCII renderer used by the 3D scenes
-├── io/                  recorder, WebSocket client
+├── io/                  recorder, WebSocket client, MIDI, projector window
 ├── editors/             code editor, node editor
 └── ui/                  controls.js (panel + mixer), keyboard.js (keymap + help)
 ```
 
-Each frame: advance the BPM clock → analyse audio → render deck A and B into
-character buffers → color them → mix through the crossfader → apply the ASCII effect →
-draw (ASCII or a render mode) → output stage (post-FX when enabled).
+Each frame: advance the BPM clock and each deck's scene clock → analyse audio → render
+deck A and B into character buffers → color them → mix through the crossfader → apply the
+ASCII effect and text overlay → draw (GPU glyph shader, canvas 2D, or a render mode) →
+post-FX when enabled → mirror to the projector window if open.
 
 Open with `index.html?debug` to get verbose logs in the console.
 
@@ -126,7 +143,9 @@ A scene is a function that fills a character buffer:
 ```javascript
 CLIFTScenes[300] = function (buffer, width, height, time, params) {
     // buffer[y][x] = single character, cleared to ' ' before every call
-    // time: milliseconds (pauses with the app)
+    // time: milliseconds on the deck's own clock (pauses with the app, follows Speed/Pulse)
+    // params persists between frames for this deck + scene: keep state on it,
+    // e.g. params._particles = params._particles || [];
     const bass = params.audioInfo.bands.bass;      // 0..1 (also lowMid, mid, highMid, treble)
     const spectrum = params.audio;                 // Float32Array(64), log-spaced, 0..1
     const beat = params.audioInfo.beat.detected;   // true on detected beats
@@ -165,6 +184,9 @@ Local scene / effect / BPM changes are sent with the same shapes.
 
 - Experimental render modes and post-FX are GPU-heavy; without hardware acceleration
   some modes drop to low frame rates.
+- Web MIDI works in Chromium-based browsers; Firefox does not allow it from a local file.
+- The projector window is fed by the main window, so keep the main window visible:
+  browsers pause rendering for minimized (and on some systems fully covered) windows.
 - Recording uses MediaRecorder (WebM); quality depends on the browser.
 
 ## 📜 License

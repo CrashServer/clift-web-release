@@ -266,12 +266,12 @@ function(buffer, width, height, time, params) {
                 .editor-container {
                     width: 90vw;
                     height: 90vh;
-                    background: #111;
-                    border: 2px solid #0f0;
-                    border-radius: 8px;
+                    background: #030a05;
+                    border: 2px solid var(--green);
+                    border-radius: 2px;
                     display: flex;
                     flex-direction: column;
-                    font-family: 'Courier New', monospace;
+                    font-family: var(--font);
                 }
                 
                 .editor-header {
@@ -279,12 +279,12 @@ function(buffer, width, height, time, params) {
                     justify-content: space-between;
                     align-items: center;
                     padding: 10px 20px;
-                    background: #222;
-                    border-bottom: 1px solid #0f0;
+                    background: #06140a;
+                    border-bottom: 1px solid var(--green);
                 }
                 
                 .editor-header h2 {
-                    color: #0f0;
+                    color: var(--green);
                     margin: 0;
                     font-size: 18px;
                 }
@@ -297,14 +297,14 @@ function(buffer, width, height, time, params) {
                 
                 .editor-sidebar {
                     width: 250px;
-                    background: #1a1a1a;
+                    background: var(--panel-solid);
                     padding: 20px;
-                    border-right: 1px solid #333;
+                    border-right: 1px solid var(--line);
                     overflow-y: auto;
                 }
                 
                 .editor-sidebar h3 {
-                    color: #0f0;
+                    color: var(--green);
                     margin: 0 0 10px 0;
                     font-size: 14px;
                 }
@@ -317,15 +317,15 @@ function(buffer, width, height, time, params) {
                     width: 100%;
                     padding: 5px;
                     margin: 5px 0;
-                    background: #333;
-                    border: 1px solid #555;
-                    color: #fff;
-                    font-family: 'Courier New', monospace;
+                    background: #0b2612;
+                    border: 1px solid var(--line-strong);
+                    color: var(--fg);
+                    font-family: var(--font);
                 }
                 
                 .editor-sidebar label {
                     display: block;
-                    color: #ccc;
+                    color: var(--fg);
                     font-size: 12px;
                     margin: 5px 0;
                 }
@@ -338,26 +338,26 @@ function(buffer, width, height, time, params) {
                 
                 .editor-tabs {
                     display: flex;
-                    background: #222;
-                    border-bottom: 1px solid #333;
+                    background: #06140a;
+                    border-bottom: 1px solid var(--line);
                 }
                 
                 .tab-button {
                     padding: 10px 20px;
-                    background: #333;
+                    background: #0b2612;
                     border: none;
-                    color: #ccc;
+                    color: var(--fg);
                     cursor: pointer;
-                    font-family: 'Courier New', monospace;
-                    border-right: 1px solid #555;
+                    font-family: var(--font);
+                    border-right: 1px solid var(--line-strong);
                 }
                 
                 .tab-button:hover {
-                    background: #444;
+                    background: #0b2612;
                 }
                 
                 .tab-button.active {
-                    background: #0f0;
+                    background: var(--green);
                     color: #000;
                 }
                 
@@ -384,10 +384,10 @@ function(buffer, width, height, time, params) {
                 .code-editor {
                     width: 100%;
                     height: calc(100% - 60px);
-                    background: #1a1a1a;
-                    color: #0f0;
-                    border: 1px solid #333;
-                    font-family: 'Courier New', monospace;
+                    background: var(--panel-solid);
+                    color: var(--green);
+                    border: 1px solid var(--line);
+                    font-family: var(--font);
                     font-size: 12px;
                     padding: 10px;
                     resize: none;
@@ -410,8 +410,8 @@ function(buffer, width, height, time, params) {
                 
                 #scene-preview {
                     background: #000;
-                    border: 2px solid #0f0;
-                    font-family: 'Courier New', monospace;
+                    border: 2px solid var(--green);
+                    font-family: var(--font);
                 }
                 
                 .preview-controls {
@@ -420,12 +420,12 @@ function(buffer, width, height, time, params) {
                 }
                 
                 .help-content {
-                    color: #ccc;
+                    color: var(--fg);
                     line-height: 1.5;
                 }
                 
                 .help-content h3 {
-                    color: #0f0;
+                    color: var(--green);
                     margin-top: 20px;
                 }
                 
@@ -434,46 +434,46 @@ function(buffer, width, height, time, params) {
                 }
                 
                 .help-content code {
-                    background: #333;
+                    background: #0b2612;
                     padding: 2px 4px;
-                    border-radius: 3px;
+                    border-radius: 2px;
                 }
                 
                 .btn {
                     padding: 5px 10px;
-                    background: #333;
-                    border: 1px solid #555;
-                    color: #fff;
+                    background: #0b2612;
+                    border: 1px solid var(--line-strong);
+                    color: var(--fg);
                     cursor: pointer;
-                    font-family: 'Courier New', monospace;
+                    font-family: var(--font);
                     font-size: 12px;
                 }
                 
                 .btn:hover {
-                    background: #444;
+                    background: #0b2612;
                 }
                 
                 .btn-primary {
-                    background: #0066cc;
-                    border-color: #0088ff;
+                    background: #0f3318;
+                    border-color: #14481f;
                 }
                 
                 .btn-success {
-                    background: #006600;
-                    border-color: #00aa00;
+                    background: #0f3318;
+                    border-color: #14481f;
                 }
                 
                 .status {
-                    color: #ccc;
+                    color: var(--fg);
                     font-size: 12px;
                 }
                 
                 .status.success {
-                    color: #0f0;
+                    color: var(--green);
                 }
                 
                 .status.error {
-                    color: #f00;
+                    color: var(--red);
                 }
             </style>
         `;

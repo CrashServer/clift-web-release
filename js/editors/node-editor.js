@@ -762,12 +762,12 @@ window.CLIFTNodeEditor = {
                 .node-editor-container {
                     width: 95vw;
                     height: 95vh;
-                    background: #111;
-                    border: 2px solid #0f0;
-                    border-radius: 8px;
+                    background: #030a05;
+                    border: 2px solid var(--green);
+                    border-radius: 2px;
                     display: flex;
                     flex-direction: column;
-                    font-family: 'Courier New', monospace;
+                    font-family: var(--font);
                 }
                 
                 .node-editor-header {
@@ -775,12 +775,12 @@ window.CLIFTNodeEditor = {
                     justify-content: space-between;
                     align-items: center;
                     padding: 10px 20px;
-                    background: #222;
-                    border-bottom: 1px solid #0f0;
+                    background: #06140a;
+                    border-bottom: 1px solid var(--green);
                 }
                 
                 .node-editor-header h2 {
-                    color: #0f0;
+                    color: var(--green);
                     margin: 0;
                     font-size: 18px;
                 }
@@ -790,27 +790,8 @@ window.CLIFTNodeEditor = {
                     gap: 5px;
                 }
                 
-                .editor-tab {
-                    padding: 8px 16px;
-                    background: #333;
-                    border: 1px solid #555;
-                    color: #ccc;
-                    cursor: pointer;
-                    font-family: 'Courier New', monospace;
-                    font-size: 12px;
-                    transition: all 0.2s;
-                }
                 
-                .editor-tab:hover {
-                    background: #444;
-                    color: #fff;
-                }
                 
-                .editor-tab.active {
-                    background: #0a5a0a;
-                    border-color: #0f0;
-                    color: #0f0;
-                }
                 
                 .node-editor-content {
                     flex: 1;
@@ -835,27 +816,27 @@ window.CLIFTNodeEditor = {
                     min-height: 0;
                     min-width: 0;
                     overflow: hidden;
-                    border: 1px solid #444;
-                    border-radius: 4px;
+                    border: 1px solid var(--line);
+                    border-radius: 2px;
                     padding: 10px;
-                    background: #1a1a1a;
+                    background: var(--panel-solid);
                 }
                 
                 .code-editor-section {
                     display: flex;
                     flex-direction: column;
-                    border: 1px solid #444;
-                    border-radius: 4px;
+                    border: 1px solid var(--line);
+                    border-radius: 2px;
                     padding: 10px;
-                    background: #1a1a1a;
+                    background: var(--panel-solid);
                 }
                 
                 .shared-preview-section {
                     grid-column: 1 / -1;
-                    border: 1px solid #444;
-                    border-radius: 4px;
+                    border: 1px solid var(--line);
+                    border-radius: 2px;
                     padding: 10px;
-                    background: #1a1a1a;
+                    background: var(--panel-solid);
                     max-height: 200px;
                 }
                 
@@ -868,17 +849,17 @@ window.CLIFTNodeEditor = {
                 
                 .code-sync-indicator {
                     font-size: 12px;
-                    color: #0f0;
+                    color: var(--green);
                 }
                 
                 .code-textarea {
                     width: 100%;
                     height: 250px;
                     background: #000;
-                    color: #0f0;
-                    font-family: 'Courier New', monospace;
+                    color: var(--green);
+                    font-family: var(--font);
                     font-size: 12px;
-                    border: 1px solid #444;
+                    border: 1px solid var(--line);
                     padding: 10px;
                     resize: vertical;
                 }
@@ -899,13 +880,13 @@ window.CLIFTNodeEditor = {
                 
                 .scene-info-inline label {
                     font-size: 12px;
-                    color: #ccc;
+                    color: var(--fg);
                 }
                 
                 .scene-info-inline input {
-                    background: #333;
-                    color: #fff;
-                    border: 1px solid #555;
+                    background: #0b2612;
+                    color: var(--fg);
+                    border: 1px solid var(--line-strong);
                     padding: 2px 5px;
                     font-size: 11px;
                 }
@@ -917,7 +898,7 @@ window.CLIFTNodeEditor = {
                 
                 .code-preview-section {
                     margin-top: 10px;
-                    border-top: 1px solid #444;
+                    border-top: 1px solid var(--line);
                     padding-top: 10px;
                 }
                 
@@ -935,31 +916,19 @@ window.CLIFTNodeEditor = {
                     min-height: 0;
                 }
                 
-                .editor-tab-content {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    display: none;
-                    overflow: hidden;
-                }
                 
-                .editor-tab-content.active {
-                    display: flex;
-                }
                 
                 .node-editor-sidebar {
                     width: 190px;
                     flex: none;
-                    background: #1a1a1a;
+                    background: var(--panel-solid);
                     padding: 20px;
-                    border-right: 1px solid #333;
+                    border-right: 1px solid var(--line);
                     overflow-y: auto;
                 }
                 
                 .node-editor-sidebar h3, .node-editor-sidebar h4 {
-                    color: #0f0;
+                    color: var(--green);
                     margin: 0 0 10px 0;
                     font-size: 14px;
                 }
@@ -973,16 +942,16 @@ window.CLIFTNodeEditor = {
                     width: 100%;
                     margin: 2px 0;
                     padding: 5px;
-                    background: #333;
-                    border: 1px solid #555;
-                    color: #fff;
+                    background: #0b2612;
+                    border: 1px solid var(--line-strong);
+                    color: var(--fg);
                     cursor: pointer;
-                    font-family: 'Courier New', monospace;
+                    font-family: var(--font);
                     font-size: 11px;
                 }
                 
                 .node-type-btn:hover {
-                    background: #444;
+                    background: #0b2612;
                 }
                 
                 .node-scene-info {
@@ -991,7 +960,7 @@ window.CLIFTNodeEditor = {
                 
                 .node-scene-info label {
                     display: block;
-                    color: #ccc;
+                    color: var(--fg);
                     font-size: 12px;
                     margin: 5px 0;
                 }
@@ -999,10 +968,10 @@ window.CLIFTNodeEditor = {
                 .node-scene-info input {
                     width: 100%;
                     padding: 5px;
-                    background: #333;
-                    border: 1px solid #555;
-                    color: #fff;
-                    font-family: 'Courier New', monospace;
+                    background: #0b2612;
+                    border: 1px solid var(--line-strong);
+                    color: var(--fg);
+                    font-family: var(--font);
                 }
                 
                 .node-templates {
@@ -1014,16 +983,16 @@ window.CLIFTNodeEditor = {
                     width: 100%;
                     margin: 3px 0;
                     padding: 6px;
-                    background: #1a5c1a;
-                    border: 1px solid #2d7d2d;
-                    color: #cfc;
+                    background: #0b2612;
+                    border: 1px solid var(--line-strong);
+                    color: var(--fg);
                     cursor: pointer;
-                    font-family: 'Courier New', monospace;
+                    font-family: var(--font);
                     font-size: 11px;
                 }
                 
                 .node-template-btn:hover {
-                    background: #2d7d2d;
+                    background: #0f3318;
                 }
                 
                 .node-actions {
@@ -1060,9 +1029,9 @@ window.CLIFTNodeEditor = {
                 }
                 
                 .graph-section, .preview-section, .properties-section {
-                    background: #1a1a1a;
-                    border: 1px solid #333;
-                    border-radius: 4px;
+                    background: var(--panel-solid);
+                    border: 1px solid var(--line);
+                    border-radius: 2px;
                     overflow: hidden;
                 }
                 
@@ -1084,9 +1053,9 @@ window.CLIFTNodeEditor = {
                 .graph-section h3, .preview-section h3, .properties-section h3 {
                     margin: 0;
                     padding: 10px 15px;
-                    background: #222;
-                    border-bottom: 1px solid #333;
-                    color: #0f0;
+                    background: #06140a;
+                    border-bottom: 1px solid var(--line);
+                    color: var(--green);
                     font-size: 14px;
                 }
                 
@@ -1103,8 +1072,8 @@ window.CLIFTNodeEditor = {
                 }
                 
                 #node-graph-canvas {
-                    background: #0a0a0a;
-                    border: 1px solid #333;
+                    background: #000;
+                    border: 1px solid var(--line);
                     cursor: grab;
                 }
                 
@@ -1114,42 +1083,42 @@ window.CLIFTNodeEditor = {
                 
                 .graph-controls {
                     padding: 10px;
-                    background: #1a1a1a;
-                    border-top: 1px solid #333;
+                    background: var(--panel-solid);
+                    border-top: 1px solid var(--line);
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    color: #ccc;
+                    color: var(--fg);
                     font-size: 12px;
                 }
                 
                 #node-preview {
                     background: #000;
-                    border: 2px solid #0f0;
-                    font-family: 'Courier New', monospace;
+                    border: 2px solid var(--green);
+                    font-family: var(--font);
                 }
                 
                 #node-properties {
                     padding: 20px;
-                    color: #ccc;
+                    color: var(--fg);
                 }
                 
                 .property-input {
                     width: 100%;
                     padding: 5px;
                     margin: 5px 0;
-                    background: #333;
-                    border: 1px solid #555;
-                    color: #fff;
-                    font-family: 'Courier New', monospace;
+                    background: #0b2612;
+                    border: 1px solid var(--line-strong);
+                    color: var(--fg);
+                    font-family: var(--font);
                 }
                 
                 /* Code Editor Styles */
                 .code-editor-sidebar {
                     width: 250px;
-                    background: #1a1a1a;
+                    background: var(--panel-solid);
                     padding: 20px;
-                    border-right: 1px solid #333;
+                    border-right: 1px solid var(--line);
                     overflow-y: auto;
                 }
                 
@@ -1170,27 +1139,27 @@ window.CLIFTNodeEditor = {
                     flex: 2;
                     display: flex;
                     flex-direction: column;
-                    background: #1a1a1a;
-                    border: 1px solid #333;
-                    border-radius: 4px;
+                    background: var(--panel-solid);
+                    border: 1px solid var(--line);
+                    border-radius: 2px;
                     overflow: hidden;
                 }
                 
                 .code-area h3 {
                     margin: 0;
                     padding: 10px 15px;
-                    background: #222;
-                    border-bottom: 1px solid #333;
-                    color: #0f0;
+                    background: #06140a;
+                    border-bottom: 1px solid var(--line);
+                    color: var(--green);
                     font-size: 14px;
                 }
                 
                 #node-code {
                     flex: 1;
-                    background: #0a0a0a;
+                    background: #000;
                     border: none;
-                    color: #0f0;
-                    font-family: 'Courier New', monospace;
+                    color: var(--green);
+                    font-family: var(--font);
                     font-size: 12px;
                     padding: 15px;
                     resize: none;
@@ -1203,9 +1172,9 @@ window.CLIFTNodeEditor = {
                     flex: 1;
                     display: flex;
                     flex-direction: column;
-                    background: #1a1a1a;
-                    border: 1px solid #333;
-                    border-radius: 4px;
+                    background: var(--panel-solid);
+                    border: 1px solid var(--line);
+                    border-radius: 2px;
                     overflow: hidden;
                     min-width: 400px;
                 }
@@ -1213,9 +1182,9 @@ window.CLIFTNodeEditor = {
                 .code-preview-section h3 {
                     margin: 0;
                     padding: 10px 15px;
-                    background: #222;
-                    border-bottom: 1px solid #333;
-                    color: #0f0;
+                    background: #06140a;
+                    border-bottom: 1px solid var(--line);
+                    color: var(--green);
                     font-size: 14px;
                 }
                 
@@ -1225,7 +1194,7 @@ window.CLIFTNodeEditor = {
                 
                 .code-scene-info label {
                     display: block;
-                    color: #ccc;
+                    color: var(--fg);
                     font-size: 12px;
                     margin: 5px 0;
                 }
@@ -1233,10 +1202,10 @@ window.CLIFTNodeEditor = {
                 .code-scene-info input {
                     width: 100%;
                     padding: 5px;
-                    background: #333;
-                    border: 1px solid #555;
-                    color: #fff;
-                    font-family: 'Courier New', monospace;
+                    background: #0b2612;
+                    border: 1px solid var(--line-strong);
+                    color: var(--fg);
+                    font-family: var(--font);
                 }
                 
                 .code-templates {
@@ -1244,7 +1213,7 @@ window.CLIFTNodeEditor = {
                 }
                 
                 .code-templates h4 {
-                    color: #0f0;
+                    color: var(--green);
                     margin: 0 0 10px 0;
                     font-size: 14px;
                 }
@@ -1254,16 +1223,16 @@ window.CLIFTNodeEditor = {
                     width: 100%;
                     margin: 3px 0;
                     padding: 6px;
-                    background: #1a5c1a;
-                    border: 1px solid #2d7d2d;
-                    color: #cfc;
+                    background: #0b2612;
+                    border: 1px solid var(--line-strong);
+                    color: var(--fg);
                     cursor: pointer;
-                    font-family: 'Courier New', monospace;
+                    font-family: var(--font);
                     font-size: 11px;
                 }
                 
                 .code-template-btn:hover {
-                    background: #2d7d2d;
+                    background: #0f3318;
                 }
                 
                 .code-actions {
@@ -1274,8 +1243,8 @@ window.CLIFTNodeEditor = {
                 
                 #code-preview {
                     background: #000;
-                    border: 2px solid #0f0;
-                    font-family: 'Courier New', monospace;
+                    border: 2px solid var(--green);
+                    font-family: var(--font);
                 }
             </style>
         `;
@@ -1349,10 +1318,6 @@ window.CLIFTNodeEditor = {
             if (e.target === elements.overlay) this.close();
         };
         
-        // Tab switching
-        document.querySelectorAll('.editor-tab').forEach(tab => {
-            tab.onclick = () => this.switchEditorTab(tab.dataset.editor);
-        });
         
         // Node type buttons
         document.querySelectorAll('.node-type-btn').forEach(btn => {
@@ -1761,107 +1726,6 @@ window.CLIFTNodeEditor = {
         
         // Update code editor
         this.updateCodeEditor();
-    },
-    
-    // Remove connection
-    removeConnection: function(connection) {
-        this.connections = this.connections.filter(conn => 
-            !(conn.fromNodeId === connection.fromNodeId && 
-              conn.fromOutput === connection.fromOutput && 
-              conn.toNodeId === connection.toNodeId && 
-              conn.toInput === connection.toInput)
-        );
-        
-        // Auto-save session when connections are modified
-        setTimeout(() => this.saveNodeSession(), 500);
-        
-        // Update code editor
-        this.updateCodeEditor();
-    },
-    
-    // Find connection at position
-    findConnectionAt: function(x, y) {
-        const tolerance = 10;
-        
-        for (let conn of this.connections) {
-            const fromNode = this.nodes.find(n => n.id === conn.fromNodeId);
-            const toNode = this.nodes.find(n => n.id === conn.toNodeId);
-            
-            if (fromNode && toNode) {
-                const fromIndex = fromNode.outputs.indexOf(conn.fromOutput);
-                const toIndex = toNode.inputs.indexOf(conn.toInput);
-                
-                const fromX = fromNode.x + fromNode.size.width;
-                const fromY = fromNode.y + 25 + fromIndex * 15 + 6;
-                const toX = toNode.x;
-                const toY = toNode.y + 25 + toIndex * 15 + 6;
-                
-                // Check if point is near the connection line
-                const dist = this.pointToLineDistance(x, y, fromX, fromY, toX, toY);
-                if (dist < tolerance) {
-                    return conn;
-                }
-            }
-        }
-        return null;
-    },
-    
-    // Calculate distance from point to line
-    pointToLineDistance: function(px, py, x1, y1, x2, y2) {
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        
-        if (length === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
-        
-        const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / (length * length)));
-        const projX = x1 + t * dx;
-        const projY = y1 + t * dy;
-        
-        return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
-    },
-    
-    // Context menu for connections
-    showConnectionContextMenu: function(e, connection) {
-        const menu = document.createElement('div');
-        menu.className = 'context-menu';
-        menu.style.cssText = `
-            position: fixed;
-            top: ${e.clientY}px;
-            left: ${e.clientX}px;
-            background: #222;
-            border: 1px solid #0f0;
-            padding: 5px;
-            z-index: 1000;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-        `;
-        
-        const deleteItem = document.createElement('div');
-        deleteItem.textContent = 'Delete Connection';
-        deleteItem.style.cssText = `
-            padding: 5px 10px;
-            cursor: pointer;
-            color: #0f0;
-        `;
-        deleteItem.onmouseover = () => deleteItem.style.background = '#333';
-        deleteItem.onmouseout = () => deleteItem.style.background = 'transparent';
-        deleteItem.onclick = () => {
-            this.removeConnection(connection);
-            document.body.removeChild(menu);
-        };
-        
-        menu.appendChild(deleteItem);
-        document.body.appendChild(menu);
-        
-        // Remove menu on click outside
-        setTimeout(() => {
-            document.addEventListener('click', () => {
-                if (menu.parentNode) {
-                    document.body.removeChild(menu);
-                }
-            }, { once: true });
-        }, 10);
     },
     
     // Context menu for nodes
@@ -2734,57 +2598,11 @@ window.CLIFTNodeEditor = {
         requestAnimationFrame(() => this.render());
     },
     
-    // Tab switching functionality
-    switchEditorTab: function(tabName) {
-        // Update tab buttons
-        document.querySelectorAll('.editor-tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        document.querySelector(`[data-editor="${tabName}"]`).classList.add('active');
-        
-        // Update tab content
-        document.querySelectorAll('.editor-tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-        document.getElementById(`${tabName}-editor-tab`).classList.add('active');
-        
-        // Setup canvases for the active tab
-        if (tabName === 'node') {
-            setTimeout(() => {
-                this.setupCanvas();
-                this.setupPreviewCanvas();
-                // Restart preview if there are nodes to preview
-                if (this.nodes.length > 0) {
-                    this.startPreview();
-                }
-            }, 100);
-        } else if (tabName === 'code') {
-            setTimeout(() => {
-                CLIFT.log('Switching to code tab, setting up canvas...');
-                const setupSuccess = this.setupCodePreviewCanvas();
-                if (!setupSuccess) {
-                    console.error('Failed to setup code preview canvas when switching to code tab');
-                    // Try again after a longer delay
-                    setTimeout(() => {
-                        CLIFT.log('Retrying code preview canvas setup...');
-                        this.setupCodePreviewCanvas();
-                    }, 500);
-                }
-            }, 100);
-        }
-    },
-    
     // Code editor canvas setup
     setupCodePreviewCanvas: function() {
         CLIFT.log('Setting up code preview canvas...');
         
-        // Check if the code editor tab is currently active
-        const codeEditorTab = document.getElementById('code-editor-tab');
-        const isCodeTabActive = codeEditorTab && codeEditorTab.classList.contains('active');
-        CLIFT.log('Code tab active:', isCodeTabActive);
-        
-        // Try to get the canvas element
-        this.codePreviewCanvas = document.getElementById('code-preview');
+        this.codePreviewCanvas = document.getElementById('code-preview-canvas');
         
         if (!this.codePreviewCanvas) {
             console.error('Code preview canvas element not found! DOM element missing.');
