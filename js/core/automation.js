@@ -8,8 +8,13 @@
 //    repeating recent ones, and cues them on the off-air deck
 //  - chooses the transition, visual FX look, colors and effects per section:
 //    long dissolves in breakdowns, quick wipes in builds, hard cuts at peaks
-//  - on a drop: instant cut to a high-energy scene with strobe / invert / burst
+//  - on a drop: instant cut to a high-energy scene with explosion / shockwave /
+//    glitch / strobe, and the text overlay if there is a message
+//  - uses everything else too: deck speed, scene params, color modes, invert,
+//    CRT post-FX, render modes, grid size, tiles / split / glitch hits, the text
+//    overlay and your saved snapshots. Each can be excluded in the options.
 // Intensity (calm .. wild) scales how much FX and how many hits it uses.
+// Left to the performer: BPM, audio input / gain, recording, projector, MIDI.
 
 (function () {
     const { pick, clamp } = CLIFT.util;
@@ -40,9 +45,16 @@
             looks: true,
             hits: true,
             colors: true,
+            colorModes: true,
+            invert: true,
             effects: true,
-            renderModes: false,
-            resolution: false,
+            postfx: true,
+            renderModes: true,
+            resolution: true,
+            speed: true,
+            params: true,
+            text: true,
+            snapshots: true,
             favoritesOnly: false
         },
         optionLabels: {
@@ -51,11 +63,19 @@
             looks: 'Visual FX looks',
             hits: 'Beat hits',
             colors: 'Colors',
+            colorModes: 'Color modes',
+            invert: 'FG/BG invert',
             effects: 'ASCII effects',
+            postfx: 'CRT post-FX',
             renderModes: 'Render modes',
             resolution: 'Grid size',
+            speed: 'Deck speed',
+            params: 'Scene params',
+            text: 'Text overlay',
+            snapshots: 'My snapshots',
             favoritesOnly: 'Favorites only'
         },
+        textUntil: 0,       // beat at which the Director hides the text it showed
 
         section: 'groove',
         fast: 0,
@@ -168,6 +188,10 @@
             const { entered } = this.classify();
             const o = this.options;
             const e = this.engine;
+            if (this.textUntil && count >= this.textUntil) {
+                this.textUntil = 0;
+                CLIFT.textOverlay.toggle(false);
+            }
             if (this.section === 'peak' && count - this.lastDrop < 2) return; // just dropped
 
             if (count % this.phrase === 0) {
@@ -184,12 +208,15 @@
             // Bar-level variation, more of it with higher intensity and energy.
             const busy = this.intensity * (this.section === 'peak' ? 1 : this.section === 'build' ? 0.6 : 0.25);
             if (count % 4 === 0 && Math.random() < busy * 0.6) {
-                if (o.hits && Math.random() < 0.6) CLIFT.fx.hit(pick(['hueJump', 'burst', 'glitch', 'split', 'shock']));
-                else if (o.looks && Math.random() < 0.4) CLIFT.fx.hit('split');
+                if (o.hits && Math.random() < 0.6) CLIFT.fx.hit(pick(['hueJump', 'burst', 'glitch', 'split', 'shock', 'grid', 'invert']));
+                else if (o.looks && Math.random() < 0.4) CLIFT.fx.hit(pick(['split', 'grid']));
                 else if (o.colors) e.stepDeckColor(Math.random() < 0.5 ? 'primary' : 'secondary', 1, 1 - e.offAirDeck);
             }
             if (o.hits && this.section === 'peak' && Math.random() < this.intensity * 0.35) {
                 CLIFT.fx.hit('punch', 0.6 + this.intensity * 0.4);
+            }
+            if (o.hits && this.section === 'peak' && Math.random() < this.intensity * 0.12) {
+                CLIFT.fx.hit(Math.random() < 0.5 ? 'strobe' : 'invert');
             }
             if (o.hits && this.section === 'peak' && count % 8 === 0 && Math.random() < this.intensity * 0.4) {
                 CLIFT.fx.hit('explode', 0.6 + this.intensity * 0.4);
@@ -206,10 +233,19 @@
             const s = SECTIONS[this.section];
             const target = e.offAirDeck;
 
+            // Now and then, bring back one of the performer's own saved looks.
+            if (o.snapshots && Math.random() < 0.15) {
+                const filled = CLIFT.snapshots.slots.map((x, i) => x ? i : -1).filter(i => i >= 0);
+                if (filled.length) {
+                    CLIFT.snapshots.recall(pick(filled));
+                    return;
+                }
+            }
+
             if (o.scenes) {
                 e.setScene(this.chooseScene(this.energyTarget), target);
                 if (o.colors) this.applyPalette(target);
-                e.decks[target].pulse = clamp(0.15 + this.energyTarget * 0.4, 0, 1);
+                this.tuneDeck(target);
             }
             if (o.crossfade) {
                 const beats = pick(s.transition);
@@ -232,12 +268,62 @@
             if (o.renderModes) {
                 e.setRenderMode(Math.random() < (this.section === 'break' ? 0.25 : 0.1) ? 1 + CLIFT.util.randInt(e.renderModes.length - 1) : 0);
             }
-            if (o.resolution) {
-                const res = this.section === 'break' ? [[60, 18], [80, 24]] : this.section === 'peak' ? [[120, 36], [160, 48]] : [[80, 24], [100, 30], [120, 36]];
+            if (o.resolution && Math.random() < 0.5) {
+                const res = this.section === 'break' ? [[60, 18], [80, 24]] : this.section === 'peak' ? [[120, 36], [160, 48], [200, 60]] : [[80, 24], [100, 30], [120, 36]];
                 const [w, h] = pick(res);
                 e.setResolution(w, h);
             }
+            if (o.colorModes) {
+                const r = Math.random();
+                e.colorMode = this.section === 'peak' ? (r < 0.8 ? 0 : 2) : r < 0.6 ? 0 : r < 0.8 ? 1 : 2;
+            }
+            if (o.invert) {
+                const chance = { break: 0.05, groove: 0.1, build: 0.2, peak: 0.25 }[this.section] * (0.5 + this.intensity);
+                e.invertColors = Math.random() < chance;
+            }
+            if (o.postfx && CLIFT.output.supported) this.choosePostFx();
+            if (o.text && CLIFT.textOverlay.text && !this.textOwnedByUser() && this.section === 'groove' && Math.random() < 0.2) {
+                this.showText('marquee', this.phrase);
+            }
             CLIFT.events.emit('state');
+        },
+
+        // Speed and params for a freshly cued scene.
+        tuneDeck(index) {
+            const e = this.engine;
+            const deck = e.decks[index];
+            deck.pulse = clamp(0.15 + this.energyTarget * 0.4, 0, 1);
+            if (this.options.speed) {
+                const [lo, hi] = { break: [0.3, 0.5], groove: [0.42, 0.6], build: [0.5, 0.68], peak: [0.55, 0.78] }[this.section];
+                deck.speed = lo + Math.random() * (hi - lo);
+            }
+            if (this.options.params && CLIFT.catalog.usesParams(deck.sceneId)) {
+                for (const k of ['param1', 'param2', 'param3']) deck.params[k] = 0.15 + Math.random() * 0.8;
+            }
+        },
+
+        choosePostFx() {
+            const out = CLIFT.output;
+            const chance = { break: 0.5, groove: 0.35, build: 0.45, peak: 0.6 }[this.section];
+            if (Math.random() >= chance) {
+                out.set('enabled', false);
+                return;
+            }
+            const presets = { break: ['clean', 'retro', 'amber'], groove: ['clean', 'retro'], build: ['cyberpunk', 'retro'], peak: ['heavy', 'cyberpunk'] }[this.section];
+            out.applyPreset(pick(presets));
+        },
+
+        // The Director only manages text it switched on itself.
+        textOwnedByUser() {
+            return CLIFT.textOverlay.enabled && !this.textUntil;
+        },
+
+        showText(mode, beats) {
+            const t = CLIFT.textOverlay;
+            t.set('mode', mode);
+            t.set('pulse', mode === 'big');
+            t.toggle(true);
+            this.textUntil = this.engine.clock.count + beats;
         },
 
         enterBreak() {
@@ -248,11 +334,14 @@
                 const target = e.offAirDeck;
                 e.setScene(this.chooseScene(this.energyTarget), target);
                 if (o.colors) this.applyPalette(target);
+                this.tuneDeck(target);
                 e.mixMode = pick(SECTIONS.break.mix);
                 e.transitionBeats = 8;
                 e.startTransition(target);
             }
             if (o.effects) e.setEffect(0);
+            if (o.invert) e.invertColors = false;
+            if (o.postfx && CLIFT.output.supported) this.choosePostFx();
             CLIFT.events.emit('state');
         },
 
@@ -264,10 +353,14 @@
             if (o.scenes) {
                 e.setScene(this.chooseScene(0.9), target);
                 if (o.colors) this.applyPalette(target, 0.9);
+                this.tuneDeck(target);
             }
             e.transition = null;
             e.setCrossfader(target);
             if (o.looks) this.chooseLook(0.9);
+            if (o.colorModes) e.colorMode = 0;
+            if (o.postfx && CLIFT.output.supported) this.choosePostFx();
+            if (o.text && CLIFT.textOverlay.text && !this.textOwnedByUser()) this.showText('big', 8);
             if (o.hits) {
                 CLIFT.fx.hit('strobe');
                 CLIFT.fx.hit('explode');
@@ -337,6 +430,7 @@
             const target = e.offAirDeck;
             e.setScene(this.chooseScene(this.energyTarget), target);
             this.applyPalette(target);
+            this.tuneDeck(target);
             e.transition = null;
             e.setCrossfader(target);
         },

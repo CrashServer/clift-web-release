@@ -71,8 +71,12 @@ permission and also works when the page is opened from disk (`file://`).
   breakdowns, build-ups, peaks and drops, changes on phrase boundaries (8-64 beats), picks
   scenes whose energy fits the moment (no repeats), long dissolves in breakdowns, cuts at
   peaks, explosion + shockwave + glitch + cut on the drop, build-ups that get glitchier
-  toward the drop, matching FX looks and color palettes. Intensity goes
-  from calm to wild; you choose what it may change
+  toward the drop, matching FX looks and color palettes. It drives everything visual
+  the app has: scenes (incl. custom ones), transitions and mix patterns, all FX looks and
+  hits, colors, color modes, invert, ASCII effects, CRT post-FX, render modes, grid size,
+  deck speed, scene params, the text overlay (on drops / as a marquee) and your saved
+  snapshots. Intensity goes from calm to wild; every part can be excluded in its options.
+  BPM, audio input, recording, projector and MIDI stay in your hands
 - **Speed & Pulse** on every deck: Speed runs the scene 0.25x-4x, Pulse lets bass and
   beats push the scene forward and flash its colors, so every scene moves with the music.
   Scenes that have their own knobs also get Param 1-3
