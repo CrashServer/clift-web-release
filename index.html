@@ -161,6 +161,14 @@
                 <select id="res-select" class="grow"></select>
             </div>
             <div class="row">
+                <label class="field-label">Renderer</label>
+                <select id="renderer-select" class="grow" title="GPU draws text with WebGL; Canvas uses 2D canvas">
+                    <option value="auto">Auto</option>
+                    <option value="gpu">GPU (WebGL)</option>
+                    <option value="canvas">Canvas 2D</option>
+                </select>
+            </div>
+            <div class="row">
                 <button class="toggle grow" id="pause-toggle" title="Pause (Space)">Pause</button>
                 <button class="toggle grow" id="record-toggle" title="Record (O)">Record</button>
             </div>
@@ -253,6 +261,7 @@
     <script src="js/core/catalog-data.js"></script>
     <script src="js/core/custom-scenes.js"></script>
     <script src="js/core/catalog.js"></script>
+    <script src="js/core/display.js"></script>
 
     <script src="js/lib/ascii3d-renderer.js"></script>
     <script src="js/scenes/_helpers.js"></script>
@@ -284,7 +293,7 @@
     <script src="js/fx/effects.js"></script>
     <script src="js/fx/effects-3d.js"></script>
     <script src="js/fx/effects-shader.js"></script>
-    <script src="js/fx/postfx.js"></script>
+    <script src="js/fx/output.js"></script>
 
     <script src="js/audio/analysis.js"></script>
     <script src="js/audio/audio.js"></script>

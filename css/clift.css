@@ -35,6 +35,7 @@ body.hide-ui .ui { display: none !important; }
 body.hide-ui { cursor: none; }
 
 #stage, #stage canvas {
+    object-fit: contain;
     position: fixed;
     inset: 0;
     width: 100vw;

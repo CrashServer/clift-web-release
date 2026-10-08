@@ -10,6 +10,7 @@
         const restoredCustom = CLIFT.custom.load();
 
         step(45, 'STARTING OUTPUT...');
+        CLIFT.display.init();
         CLIFT.output.init(document.getElementById('stage'));
 
         step(60, 'STARTING ENGINE...');

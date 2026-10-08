@@ -76,8 +76,8 @@
             }
 
             this.allocateBuffers();
-            this.resize();
-            window.addEventListener('resize', () => this.resize());
+            this.resize(CLIFT.display.size());
+            CLIFT.events.on('display-resize', (size) => this.resize(size));
         }
 
         // ---- buffers & sizing ----------------------------------------------
@@ -94,10 +94,7 @@
             this.bgLists = Array.from({ length: CLIFT.palette.count + 1 }, () => []);
         }
 
-        resize() {
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            const w = window.innerWidth;
-            const h = window.innerHeight;
+        resize({ width: w, height: h, dpr }) {
             this.asciiCanvas.width = Math.round(w * dpr);
             this.asciiCanvas.height = Math.round(h * dpr);
             // Experimental modes use fixed pixel sizes, so they render at CSS resolution.
@@ -172,15 +169,18 @@
                 this.mixBuffers();
                 if (this.currentEffect > 0) this.applyEffect();
 
-                if (this.renderMode === 0) {
-                    this.drawASCII();
-                } else {
+                if (this.renderMode !== 0) {
                     this.drawRenderMode();
+                    CLIFT.output.renderCanvas(this.modeCanvas);
+                } else if (CLIFT.output.gpuText) {
+                    CLIFT.output.renderGrid(this);
+                } else {
+                    this.drawASCII();
+                    CLIFT.output.renderCanvas(this.asciiCanvas);
                 }
                 this.frameCount++;
             }
 
-            CLIFT.output.render(this.renderMode === 0 ? this.asciiCanvas : this.modeCanvas, this);
             CLIFT.events.emit('frame', this);
         }
 

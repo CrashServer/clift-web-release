@@ -361,6 +361,8 @@
                 const [w, h] = e.resolutions[Number(ev.target.value)];
                 e.setResolution(w, h);
             };
+            $('renderer-select').onchange = (ev) => CLIFT.output.setRenderer(ev.target.value);
+            if (!CLIFT.output.supported) $('renderer-select').disabled = true;
             $('pause-toggle').onclick = () => e.togglePause();
             $('record-toggle').onclick = () => this.toggleRecording();
         },
@@ -546,6 +548,9 @@
             const resIndex = e.resolutions.findIndex(([w, h]) => w === e.width && h === e.height);
             $('res-select').value = resIndex;
             $('stat-res').textContent = `${e.width}×${e.height}`;
+            $('renderer-select').value = CLIFT.output.rendererPref;
+            $('renderer-select').title = `Currently drawing with ${CLIFT.output.gpuText ? 'WebGL' : 'canvas 2D'}` +
+                (CLIFT.output.softwareGL ? ' (WebGL is software-only here)' : '');
             setToggle($('pause-toggle'), e.paused, 'Paused', 'Pause');
             $('badge-pause').hidden = !e.paused;
             setToggle($('record-toggle'), CLIFT.recorder.recording, 'Stop rec', 'Record');
