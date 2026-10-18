@@ -5,7 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#000000">
     <title>CLIFT Web - ASCII VJ</title>
-    <link rel="manifest" href="manifest.json">
+    <script>
+        // The web-app manifest is only useful (and only loadable) over http(s);
+        // from file:// the browser blocks it with a CORS error.
+        if (location.protocol.startsWith('http')) {
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = 'manifest.json';
+            document.head.appendChild(link);
+        }
+    </script>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%23000%27/%3E%3Ctext x=%272%27 y=%2713%27 font-family=%27monospace%27 font-size=%2713%27 fill=%27%230f0%27%3EC%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="css/clift.css">
 </head>
 <body>
