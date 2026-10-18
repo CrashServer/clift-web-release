@@ -52,6 +52,13 @@ permission and also works when the page is opened from disk (`file://`).
   or play an audio file (drop it onto the page). 64-band log spectrum, 5 bands,
   beat detection, tempo estimation and auto-level (keeps quiet inputs and highs lively)
 - **Tempo**: BPM clock, tap tempo (re-syncs the downbeat), sync to detected BPM
+- **3D world** (GPU): fly through ray-marched ASCII structures that wear the live decks as
+  their texture - **City** (building heights pump with the spectrum), **Monoliths**,
+  **Temple** (colonnade), **Cubes** (floating, spinning), **Terrain**, **Rings** (tunnel of
+  rotating rings), **Lattice** (spheres and bars pulsing with the bass). Rendered as real
+  ASCII (one ray per character cell, glyph picked by the 3D shading, color from the
+  content), as flat **Blocks**, or **Raw** smooth 3D. Camera moves: Fly, Orbit, Crane,
+  Drift; speed pushed by the bass; distance fades to black. Visual FX apply on top
 - **3D camera** (GPU): the whole mixed image becomes a surface seen by a moving camera -
   **Macro** (extreme close-ups drifting over the image), **Floor** (infinite plane to the
   horizon), **Tunnel**, **Corridor**, **Globe** (lit rotating sphere), **Screen** (a giant
@@ -84,7 +91,8 @@ permission and also works when the page is opened from disk (`file://`).
   the screen is lit and steers density and masks toward a target per section (about 10%
   in breakdowns up to 60% at peaks), scaled by the **Fill** slider (sparse .. full), and
   keeps screen-filling effects (Invert, blurs, heavy trails) for the full moments.
-  It frames everything with camera shots per section (slow macro / globe shots in
+  It takes the set into the 3D worlds now and then (world, camera move and style
+  chosen per section; drops fly in fast). It frames everything with camera shots per section (slow macro / globe shots in
   breakdowns, floors and swinging screens in grooves, tunnels and corridors that
   accelerate into the drop) and varies what happens on a drop (slam, glitch storm,
   split burst, strobe, shockwave - the explosion is the rarest). Every choice goes
@@ -135,7 +143,7 @@ Press **H** in the app for the full list. The essentials:
 | U | hide / show the interface | | W | live-coding server |
 | Shift+1 … 8 | recall snapshot | | L | text overlay |
 | G / Shift+G | next split mode / re-split now | | Y / Shift+Y | feedback on/off / reset FX |
-| Shift+C | next 3D camera | | | |
+| Shift+C | next 3D camera | | Shift+W | next 3D world |
 
 Digits use the physical number keys, so they also work on AZERTY keyboards without Shift.
 
@@ -169,6 +177,7 @@ js/
 │   ├── audio.js         sources (demo / input / file), spectrum, bands, beats
 │   └── analysis.js      advanced features (spectral shape, buildup/drop...)
 ├── fx/                  ASCII effects, fx-rack.js (visual FX + hits), beat-actions.js,
+│                        world.js (3D ASCII world: ray-marched structures, glyph pass),
 │                        output.js (GPU text, visual FX + feedback passes, post-FX)
 ├── scenes/              one file per bank (_helpers.js loads first)
 ├── lib/                 3D ASCII renderer used by the 3D scenes

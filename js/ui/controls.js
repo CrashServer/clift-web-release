@@ -46,6 +46,7 @@
             this.bindMidi();
             this.bindVfx();
             this.bindBeats();
+            this.bindWorld();
 
             // Mouse-clicked buttons keep focus, so a later Space/Enter would
             // "click" them again on top of the shortcut. Drop focus after clicks.
@@ -766,6 +767,56 @@
             $('vfx-state').classList.toggle('on', on);
         },
 
+        // ---- 3D world -------------------------------------------------------------
+
+        bindWorld() {
+            const w = CLIFT.world;
+            fillSelect($('world-select'), w.WORLDS.map((n, i) => [i, n]));
+            fillSelect($('world-style'), w.STYLES.map((n, i) => [i, n]));
+            fillSelect($('world-move'), w.MOVES.map((n, i) => [i, n]));
+            $('world-select').onchange = (ev) => w.set('world', Number(ev.target.value));
+            $('world-style').onchange = (ev) => w.set('style', Number(ev.target.value));
+            $('world-move').onchange = (ev) => w.set('move', Number(ev.target.value));
+            $('world-cut').onclick = () => w.cut();
+            const box = $('world-sliders');
+            this.worldInputs = {};
+            for (const [key, label] of [['speed', 'Speed'], ['altitude', 'Altitude'], ['detail', 'Detail'],
+                ['content', 'Content'], ['texScale', 'Texture size'], ['fog', 'Fog'], ['react', 'React']]) {
+                const l = document.createElement('label');
+                l.className = 'slider';
+                const span = document.createElement('span');
+                span.textContent = label;
+                const input = document.createElement('input');
+                Object.assign(input, { type: 'range', min: 0, max: 1, step: 0.01 });
+                const out = document.createElement('output');
+                l.append(span, input, out);
+                box.appendChild(l);
+                input.oninput = () => {
+                    w.settings[key] = Number(input.value);
+                    out.textContent = Number(input.value).toFixed(2);
+                };
+                input.onchange = () => CLIFT.events.emit('state');
+                this.worldInputs[key] = input;
+            }
+            if (!CLIFT.output.supported) {
+                $('world-unsupported').hidden = false;
+                for (const el of $('panel').querySelectorAll('[data-section="world"] select, [data-section="world"] input, [data-section="world"] button')) el.disabled = true;
+            }
+        },
+
+        syncWorld() {
+            const w = CLIFT.world;
+            $('world-select').value = w.settings.world;
+            $('world-style').value = w.settings.style;
+            $('world-move').value = w.settings.move;
+            for (const [key, input] of Object.entries(this.worldInputs)) {
+                input.value = w.settings[key];
+                input.nextElementSibling.textContent = Number(w.settings[key]).toFixed(2);
+            }
+            $('world-state').textContent = w.settings.world ? w.WORLDS[w.settings.world].toLowerCase() : 'off';
+            $('world-state').classList.toggle('on', w.settings.world > 0);
+        },
+
         // ---- beat actions --------------------------------------------------------
 
         bindBeats() {
@@ -917,6 +968,7 @@
             this.syncAutoStatus();
             this.syncVfx();
             this.syncBeats();
+            this.syncWorld();
             for (const c of $('auto-options').querySelectorAll('input')) c.checked = !!auto.options[c.dataset.opt];
 
             const snaps = CLIFT.snapshots;

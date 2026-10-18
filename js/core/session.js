@@ -43,6 +43,7 @@
                 postfx: CLIFT.output.getOptions(),
                 auto: CLIFT.director.getState(),
                 fx: CLIFT.fx.getState(),
+                world: CLIFT.world.getState(),
                 beatActions: CLIFT.beatActions.getState(),
                 audioGain: CLIFT.audio.gain,
                 snapshots: CLIFT.snapshots.slots,
@@ -97,6 +98,7 @@
             if (data.postfx) CLIFT.output.setOptions(data.postfx);
             if (data.auto) CLIFT.director.setState(data.auto);
             if (data.fx) CLIFT.fx.setState(data.fx);
+            if (data.world) CLIFT.world.setState(data.world);
             if (data.beatActions) CLIFT.beatActions.setState(data.beatActions);
             if (typeof data.audioGain === 'number') CLIFT.audio.setGain(CLIFT.util.clamp(data.audioGain, 0.1, 8));
             if (data.snapshots) CLIFT.snapshots.setAll(data.snapshots);

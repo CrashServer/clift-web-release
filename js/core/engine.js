@@ -181,6 +181,7 @@
                 this.advanceDeckTime(dt);
                 CLIFT.director.update(dt, this.audioFrame);
                 CLIFT.fx.update(dt, this.audioFrame);
+                CLIFT.world.update(dt, this.audioFrame);
                 this.updateTransition();
 
                 this.renderDeck(this.decks[0], this.bufferA, this.colorBufferA);

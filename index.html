@@ -147,6 +147,21 @@
             <p class="hint" id="vfx-unsupported" hidden>Visual FX need WebGL.</p>
         </details>
 
+        <details class="section" open data-section="world">
+            <summary>3D World <span class="sum-state" id="world-state">off</span></summary>
+            <div class="row">
+                <select id="world-select" class="grow" title="Fly through ASCII structures wearing the live decks (Shift+W)"></select>
+                <select id="world-style" title="ASCII glyphs, flat blocks or smooth 3D"></select>
+            </div>
+            <div class="row">
+                <label class="field-label">Camera</label>
+                <select id="world-move" class="grow"></select>
+                <button id="world-cut" title="Jump to another place">Cut</button>
+            </div>
+            <div id="world-sliders"></div>
+            <p class="hint" id="world-unsupported" hidden>The 3D world needs WebGL.</p>
+        </details>
+
         <details class="section" data-section="beats">
             <summary>On beat <span class="sum-state" id="beats-state">off</span></summary>
             <div class="row">
@@ -399,6 +414,7 @@
     <script src="js/fx/fx-rack.js"></script>
     <script src="js/fx/beat-actions.js"></script>
     <script src="js/fx/output.js"></script>
+    <script src="js/fx/world.js"></script>
 
     <script src="js/audio/analysis.js"></script>
     <script src="js/audio/audio.js"></script>

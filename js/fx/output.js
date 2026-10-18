@@ -674,7 +674,7 @@
             gl.bindTexture(gl.TEXTURE_2D, this.tex.grid);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
 
-            const usePipeline = this.options.enabled || CLIFT.fx.active;
+            const usePipeline = this.options.enabled || CLIFT.fx.active || CLIFT.world.active;
             if (usePipeline) this.bindTarget(this.targets.scene); else gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
             const { program, u } = this.ascii;
@@ -707,6 +707,7 @@
             let fresh = false;
             if (t.key !== key) {
                 t.key = key;
+                gl.activeTexture(gl.TEXTURE7); // scratch unit: never leave a target bound where a sampler reads
                 gl.bindTexture(gl.TEXTURE_2D, t.tex);
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.canvas.width, this.canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
@@ -722,6 +723,11 @@
         // Visual FX (if any) into a feedback buffer, then color FX / CRT post to the screen.
         pipeline(srcTex, srcFlip) {
             const gl = this.gl;
+            // 3D world: the scene becomes the texture of a ray-marched world.
+            if (CLIFT.world.active) {
+                const worldTex = CLIFT.world.render(this, srcTex, srcFlip);
+                if (worldTex) { srcTex = worldTex; srcFlip = true; }
+            }
             let tex = srcTex, flip = srcFlip;
             if (CLIFT.fx.active) {
                 const cur = this.targets.fb[this.fbIndex];
@@ -797,7 +803,7 @@
 
         // A 2D source canvas (canvas-path ASCII or an experimental render mode).
         renderCanvas(source) {
-            const needsOutput = (this.gl && (this.options.enabled || CLIFT.fx.active)) || CLIFT.recorder.recording;
+            const needsOutput = (this.gl && (this.options.enabled || CLIFT.fx.active || CLIFT.world.active)) || CLIFT.recorder.recording;
             if (!needsOutput) {
                 this.show(source);
                 this.present();

@@ -116,6 +116,7 @@
             snapshots: true,
             space: true,
             camera: true,
+            world: true,
             favoritesOnly: false
         },
         fill: 0.4,          // 0 = sparse .. 1 = full screen; scales the coverage targets
@@ -137,6 +138,7 @@
             snapshots: 'My snapshots',
             space: 'Negative space',
             camera: '3D camera',
+            world: '3D world',
             favoritesOnly: 'Favorites only'
         },
         textUntil: 0,       // beat at which the Director hides the text it showed
@@ -331,7 +333,9 @@
         },
 
         // Camera hits need a 3D shot; on a flat image they become their 2D cousins.
+        // In the 3D world a camera cut jumps somewhere else in the world.
         hit(kind, strength = 1) {
+            if (kind === 'camCut' && CLIFT.world.settings.world) { CLIFT.world.cut(); return; }
             const flat = !CLIFT.fx.settings.cam;
             if (flat && kind === 'slam') kind = 'punch';
             if (flat && kind === 'camCut') kind = 'hueJump';
@@ -442,6 +446,7 @@
                 e.setCrossfader(target);
             }
             if (o.looks) this.chooseLook();
+            if (o.world) this.chooseWorld();
             if (o.camera) this.chooseCamera();
             if (o.space) this.chooseMask(target);
             if (o.effects) {
@@ -554,6 +559,7 @@
             e.transition = null;
             e.setCrossfader(target);
             if (o.looks) this.chooseLook(0.9);
+            if (o.world) this.chooseWorld(true);
             if (o.camera) this.chooseCamera();
             if (o.colorModes) e.colorMode = 0;
             if (o.resolution) this.chooseResolution('peak');
@@ -627,10 +633,40 @@
             this.fxTargets = null;
         },
 
+        // Sometimes the set goes into the 3D world: which world, how the camera
+        // moves, which rendering style - all through the variety picker.
+        chooseWorld(drop = false) {
+            const w = CLIFT.world;
+            if (!CLIFT.output.supported) return;
+            const chance = { break: 0.3, groove: 0.3, build: 0.45, peak: 0.4 }[this.section] * (0.6 + this.intensity * 0.6);
+            if (!drop && Math.random() >= chance) {
+                w.settings.world = 0;
+                return;
+            }
+            const ws = w.settings;
+            ws.world = w.WORLDS.indexOf(CLIFT.variety.pick('world', w.WORLDS.slice(1)));
+            ws.move = w.MOVES.indexOf(CLIFT.variety.pick('worldMove', [['Fly', 3], ['Orbit', 2], ['Crane', 2], ['Drift', 2]]));
+            ws.style = w.STYLES.indexOf(CLIFT.variety.pick('worldStyle', [['ASCII', 4], ['Blocks', 1], ['Raw', 2]]));
+            const [lo, hi] = { break: [0.05, 0.25], groove: [0.2, 0.45], build: [0.4, 0.75], peak: [0.55, 0.95] }[this.section];
+            ws.speed = drop ? 0.9 : lo + Math.random() * (hi - lo);
+            ws.altitude = Math.random() * 0.7;
+            ws.content = 0.3 + Math.random() * 0.5;
+            ws.texScale = 0.15 + Math.random() * 0.6;
+            ws.fog = 0.2 + Math.random() * 0.5;
+            ws.detail = 0.3 + Math.random() * 0.5;
+            w.cut();
+        },
+
         // A camera shot for the section: which 3D surface, how close, how fast.
+        // Inside the 3D world the image camera stays flat (the world has its own).
         chooseCamera() {
             const fx = CLIFT.fx;
             const s = fx.settings;
+            if (CLIFT.world.settings.world) {
+                s.cam = 0;
+                this.lookBase = { ...s };
+                return;
+            }
             const name = CLIFT.variety.pick('camera', SECTIONS[this.section].cams);
             s.cam = Math.max(0, fx.CAMERAS.indexOf(name));
             const r = Math.random;

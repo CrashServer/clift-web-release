@@ -78,6 +78,7 @@
 
         { group: 'Visual FX', label: 'G / Shift+G', desc: 'Next split mode / re-split now', key: ['g'], anyShift: true,
             run: (ev) => ev.shiftKey ? CLIFT.fx.hit('split') : CLIFT.fx.stepSplit(1) },
+        { group: 'Visual FX', label: 'Shift+W', desc: 'Next 3D world (off after the last)', key: ['w'], shift: true, run: () => CLIFT.world.step('world', CLIFT.world.WORLDS, 1) },
         { group: 'Visual FX', label: 'Shift+C', desc: 'Next 3D camera', key: ['c'], shift: true, run: () => CLIFT.fx.stepCamera(1) },
         { group: 'Visual FX', label: 'Y', desc: 'Feedback trails on/off', key: ['y'], run: () => CLIFT.fx.toggleFeedback() },
         { group: 'Visual FX', label: 'Shift+Y', desc: 'Reset visual FX', key: ['y'], shift: true, run: () => CLIFT.fx.reset() },
