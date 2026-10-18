@@ -34,7 +34,11 @@
                     gradientType: d.gradientType,
                     params: Object.assign({}, d.params),
                     speed: d.speed,
-                    pulse: d.pulse
+                    pulse: d.pulse,
+                    density: d.density,
+                    mask: d.mask,
+                    maskSize: d.maskSize,
+                    maskInvert: d.maskInvert
                 })),
                 postfx: CLIFT.output.getOptions(),
                 auto: CLIFT.director.getState(),
@@ -81,6 +85,10 @@
                 deck.gradientType = CLIFT.util.clamp(num(d.gradientType, deck.gradientType), 0, CLIFT.palette.gradients.length - 1);
                 if (typeof d.speed === 'number') deck.speed = CLIFT.util.clamp(d.speed, 0, 1);
                 if (typeof d.pulse === 'number') deck.pulse = CLIFT.util.clamp(d.pulse, 0, 1);
+                if (typeof d.density === 'number') deck.density = CLIFT.util.clamp(d.density, 0, 1);
+                if (typeof d.mask === 'number') deck.mask = CLIFT.util.clamp(d.mask | 0, 0, CLIFT.masks.length - 1);
+                if (typeof d.maskSize === 'number') deck.maskSize = CLIFT.util.clamp(d.maskSize, 0, 1);
+                deck.maskInvert = !!d.maskInvert;
                 if (d.params) {
                     for (const k of ['param1', 'param2', 'param3']) deck.params[k] = CLIFT.util.clamp(num(d.params[k], 0.5), 0, 1);
                 }

@@ -17,7 +17,7 @@
         { id: 'shock', label: 'Shockwave', run: () => CLIFT.fx.hit('shock') },
         { id: 'grid', label: 'Tile shuffle', run: () => CLIFT.fx.hit('grid') },
         { id: 'colors', label: 'Color change', run: () => { e().randomizeColors(0); e().randomizeColors(1); } },
-        { id: 'effect', label: 'Effect change', run: () => e().setEffect(Math.random() < 0.35 ? 0 : 1 + CLIFT.util.randInt(e().effects.length - 1)) },
+        { id: 'effect', label: 'Effect change', run: () => e().setEffect(Math.random() < 0.35 ? 0 : CLIFT.director.chooseEffect()) },
         { id: 'scene', label: 'Scene change', run: () => CLIFT.director.cutToNewScene() }
     ];
 

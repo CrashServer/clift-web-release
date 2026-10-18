@@ -75,8 +75,18 @@ permission and also works when the page is opened from disk (`file://`).
   the app has: scenes (incl. custom ones), transitions and mix patterns, all FX looks and
   hits, colors, color modes, invert, ASCII effects, CRT post-FX, render modes, grid size,
   deck speed, scene params, the text overlay (on drops / as a marquee) and your saved
-  snapshots. Intensity goes from calm to wild; every part can be excluded in its options.
+  snapshots. It also keeps the screen from always being full: it measures how much of
+  the screen is lit and steers density and masks toward a target per section (about 10%
+  in breakdowns up to 60% at peaks), scaled by the **Fill** slider (sparse .. full), and
+  keeps screen-filling effects (Invert, blurs, heavy trails) for the full moments.
+  Intensity goes from calm to wild; every part can be excluded in its options.
   BPM, audio input, recording, projector and MIDI stay in your hands
+- **Negative space**: per-deck **Density** thins a scene into organic patches of black
+  (light glyphs go first, through a slowly drifting noise field), and **Masks** confine a
+  deck to a shape - circle, ring, bands, halves, diagonal, box, frame, lower third,
+  stripes, or moving ones (scanner, wandering spotlight, blocks re-cut every bar) - sized,
+  invertible and breathing with the bass. The **Layer** mix draws one deck over the other
+  so two sparse decks compose into one picture
 - **Speed & Pulse** on every deck: Speed runs the scene 0.25x-4x, Pulse lets bass and
   beats push the scene forward and flash its colors, so every scene moves with the music.
   Scenes that have their own knobs also get Param 1-3

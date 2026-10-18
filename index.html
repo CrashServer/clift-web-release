@@ -72,6 +72,13 @@
             </div>
             <label class="slider" title="Scene time speed, 0.25x - 4x"><span>Speed</span><input type="range" id="deck-speed" min="0" max="1" step="0.01"><output id="deck-speed-val"></output></label>
             <label class="slider" title="How much bass and beats push the scene forward and flash its colors"><span>Pulse</span><input type="range" id="deck-pulse" min="0" max="1" step="0.01"><output id="deck-pulse-val"></output></label>
+            <label class="slider" title="Thin the scene into patches of empty space (light glyphs go first)"><span>Density</span><input type="range" id="deck-density" min="0" max="1" step="0.01"><output id="deck-density-val"></output></label>
+            <div class="row">
+                <label class="field-label">Mask</label>
+                <select id="deck-mask" class="grow" title="Confine this deck to a shape"></select>
+                <button class="toggle" id="deck-mask-invert" title="Invert the mask">Inv</button>
+            </div>
+            <label class="slider"><span>Mask size</span><input type="range" id="deck-mask-size" min="0" max="1" step="0.01"><output id="deck-mask-size-val"></output></label>
             <div id="param-sliders">
                 <label class="slider"><span>Param 1</span><input type="range" id="param1" min="0.01" max="1" step="0.01"><output id="param1-val"></output></label>
                 <label class="slider"><span>Param 2</span><input type="range" id="param2" min="0.01" max="1" step="0.01"><output id="param2-val"></output></label>
@@ -205,6 +212,7 @@
                 <button class="toggle grow" id="auto-toggle" title="Full Auto (M)">Full Auto</button>
                 <select id="auto-phrase" title="Phrase length: big changes happen on these boundaries"></select>
             </div>
+            <label class="slider" title="How much of the screen gets lit: sparse (lots of black) .. full"><span>Fill</span><input type="range" id="auto-fill" min="0" max="1" step="0.01"><output></output></label>
             <label class="slider" title="Calm: gentle looks and few hits. Wild: heavy FX, more hits and cuts"><span>Intensity</span><input type="range" id="auto-intensity" min="0" max="1" step="0.01"><output></output></label>
             <div class="auto-status" id="auto-status"></div>
             <label class="field-label">Auto may change</label>
@@ -382,6 +390,7 @@
     <script src="js/audio/audio.js"></script>
 
     <script src="js/core/render-modes.js"></script>
+    <script src="js/core/composition.js"></script>
     <script src="js/core/engine.js"></script>
     <script src="js/core/automation.js"></script>
     <script src="js/core/session.js"></script>

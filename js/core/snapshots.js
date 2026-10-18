@@ -24,7 +24,11 @@
                     gradientType: d.gradientType,
                     params: d.params,
                     speed: d.speed,
-                    pulse: d.pulse
+                    pulse: d.pulse,
+                    density: d.density,
+                    mask: d.mask,
+                    maskSize: d.maskSize,
+                    maskInvert: d.maskInvert
                 })),
                 effect: e.currentEffect,
                 renderMode: e.renderMode,
@@ -60,6 +64,7 @@
                 Object.assign(deck.params, d.params);
                 if (typeof d.speed === 'number') deck.speed = d.speed;
                 if (typeof d.pulse === 'number') deck.pulse = d.pulse;
+                for (const k of ['density', 'mask', 'maskSize', 'maskInvert']) if (d[k] !== undefined) deck[k] = d[k];
             });
             e.currentEffect = s.effect;
             e.renderMode = s.renderMode;

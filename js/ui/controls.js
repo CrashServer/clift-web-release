@@ -249,6 +249,16 @@
                 CLIFT.events.emit('state');
             };
             $('random-colors').onclick = () => this.e.randomizeColors();
+            fillSelect($('deck-mask'), CLIFT.masks.map((m, i) => [i, m.name]));
+            $('deck-mask').onchange = (ev) => this.e.setDeckComposition(this.e.activeDeck, 'mask', Number(ev.target.value));
+            $('deck-mask-invert').onclick = () => this.e.setDeckComposition(this.e.activeDeck, 'maskInvert', !this.e.deck().maskInvert);
+            for (const [id, key] of [['deck-density', 'density'], ['deck-mask-size', 'maskSize']]) {
+                $(id).oninput = (ev) => {
+                    this.e.deck()[key] = Number(ev.target.value);
+                    this.syncDeckKnobs();
+                };
+                $(id).onchange = () => CLIFT.events.emit('state');
+            }
             for (const [id, setter] of [['deck-speed', 'setDeckSpeed'], ['deck-pulse', 'setDeckPulse']]) {
                 $(id).oninput = (ev) => {
                     this.e.decks[this.e.activeDeck][id === 'deck-speed' ? 'speed' : 'pulse'] = Number(ev.target.value);
@@ -378,6 +388,12 @@
             const auto = CLIFT.director;
             $('auto-toggle').onclick = () => auto.toggle();
             $('auto-phrase').onchange = (ev) => { auto.phrase = Number(ev.target.value); CLIFT.events.emit('state'); };
+            const fill = $('auto-fill');
+            fill.oninput = () => {
+                auto.fill = Number(fill.value);
+                fill.nextElementSibling.textContent = this.fillLabel(auto.fill);
+            };
+            fill.onchange = () => CLIFT.events.emit('state');
             const intensity = $('auto-intensity');
             intensity.oninput = () => {
                 auto.intensity = Number(intensity.value);
@@ -607,6 +623,10 @@
             if ($('midi-modal').open) $('midi-last').textContent = `Last: ${CLIFT.midi.lastMessage}`;
         },
 
+        fillLabel(v) {
+            return v < 0.25 ? 'sparse' : v < 0.5 ? 'airy' : v < 0.75 ? 'rich' : 'full';
+        },
+
         intensityLabel(v) {
             return v < 0.25 ? 'calm' : v < 0.5 ? 'easy' : v < 0.75 ? 'lively' : 'wild';
         },
@@ -633,7 +653,10 @@
             bar.appendChild(fill);
             const next = document.createElement('span');
             next.textContent = `next in ${st.nextIn}`;
-            el.append(sec, bar, next);
+            const lit = document.createElement('span');
+            lit.title = 'Screen lit now -> target (negative space)';
+            lit.textContent = `lit ${Math.round(st.coverage * 100)}→${Math.round(st.coverageTarget * 100)}%`;
+            el.append(sec, bar, lit, next);
         },
 
         // ---- visual FX ------------------------------------------------------------
@@ -877,6 +900,8 @@
             $('badge-auto').hidden = !auto.enabled;
             $('auto-phrase').value = auto.phrase;
             $('auto-intensity').value = auto.intensity;
+            $('auto-fill').value = auto.fill;
+            $('auto-fill').nextElementSibling.textContent = this.fillLabel(auto.fill);
             $('auto-intensity').nextElementSibling.textContent = this.intensityLabel(auto.intensity);
             this.syncAutoStatus();
             this.syncVfx();
@@ -928,6 +953,12 @@
             $('deck-speed-val').textContent = `${Math.pow(2, (deck.speed - 0.5) * 4).toFixed(2)}x`;
             $('deck-pulse').value = deck.pulse;
             $('deck-pulse-val').textContent = deck.pulse.toFixed(2);
+            $('deck-density').value = deck.density;
+            $('deck-density-val').textContent = `${Math.round(deck.density * 100)}%`;
+            $('deck-mask').value = deck.mask;
+            $('deck-mask-size').value = deck.maskSize;
+            $('deck-mask-size-val').textContent = deck.maskSize.toFixed(2);
+            setToggle($('deck-mask-invert'), deck.maskInvert);
         },
 
         renderSceneList() {
@@ -1036,6 +1067,7 @@
                 if (CLIFT.director.enabled) {
                     this.syncAutoStatus();
                     this.syncVfx(); // the Director keeps moving the FX sliders
+                    this.syncDeckKnobs();
                 }
             }
             if (e.frameCount % 15 === 0) {

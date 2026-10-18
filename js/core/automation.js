@@ -20,10 +20,15 @@
     const { pick, clamp } = CLIFT.util;
 
     const SECTIONS = {
-        break: { target: 0.2, transition: [16, 8], mix: [1, 6], looks: ['clean', 'trails', 'liquid', 'melt'] },
-        groove: { target: 0.5, transition: [8, 4], mix: [0, 2, 3, 4], looks: ['clean', 'trails', 'mirror', 'panels', 'slicer', 'tiles'] },
-        build: { target: 0.65, transition: [4, 2], mix: [5, 6], looks: ['tunnel', 'slicer', 'glitch', 'liquid', 'melt'] },
-        peak: { target: 0.85, transition: [1, 0], mix: [7, 2], looks: ['storm', 'panels', 'glitch', 'shatter', 'datamosh', 'acid', 'mosaic'] }
+        // coverage = how much of the screen should be lit (before the Fill slider)
+        break: { target: 0.2, coverage: 0.1, transition: [16, 8], mix: [1, 6, 8, 8], looks: ['clean', 'clean', 'trails', 'liquid', 'melt'],
+            masks: ['Circle', 'Ring', 'Band ═', 'Spotlight', 'Lower third', 'Frame', 'Scanner'] },
+        groove: { target: 0.5, coverage: 0.25, transition: [8, 4], mix: [0, 2, 3, 4, 8, 8], looks: ['clean', 'trails', 'mirror', 'panels', 'slicer', 'tiles'],
+            masks: ['Band ═', 'Band ║', 'Box', 'Left', 'Right', 'Scanner', 'Stripes', 'Blocks', 'Diagonal', 'Spotlight'] },
+        build: { target: 0.65, coverage: 0.4, transition: [4, 2], mix: [5, 6, 8], looks: ['tunnel', 'slicer', 'glitch', 'liquid', 'melt'],
+            masks: ['Scanner', 'Blocks', 'Ring', 'Box', 'Band ═'] },
+        peak: { target: 0.85, coverage: 0.6, transition: [1, 0], mix: [7, 2, 8], looks: ['storm', 'panels', 'glitch', 'shatter', 'datamosh', 'acid', 'mosaic'],
+            masks: ['Blocks', 'Circle', 'Frame', 'Full'] }
     };
 
     // Color pairs that work together, with a "temperature" (0 cool .. 1 hot).
@@ -83,8 +88,10 @@
             params: true,
             text: true,
             snapshots: true,
+            space: true,
             favoritesOnly: false
         },
+        fill: 0.4,          // 0 = sparse .. 1 = full screen; scales the coverage targets
         optionLabels: {
             scenes: 'Scenes',
             crossfade: 'Transitions',
@@ -101,6 +108,7 @@
             params: 'Scene params',
             text: 'Text overlay',
             snapshots: 'My snapshots',
+            space: 'Negative space',
             favoritesOnly: 'Favorites only'
         },
         textUntil: 0,       // beat at which the Director hides the text it showed
@@ -150,7 +158,37 @@
             }
         },
 
+        // How much of the screen should be lit right now.
+        get coverageTarget() {
+            return clamp(SECTIONS[this.section].coverage * (0.4 + this.fill * 1.4), 0.04, 0.95);
+        },
+
+        // Closed loop on density (fine control): scale both decks' density by the
+        // ratio target / measured coverage. Density can only remove glyphs, so the
+        // target is a ceiling: sparse scenes simply run at full density.
+        steerSpace(dt) {
+            const e = this.engine;
+            if (e.coverage === undefined) return;
+            const ratio = this.coverageTarget / Math.max(e.coverage, 0.01);
+            const factor = Math.pow(clamp(ratio, 0.25, 4), dt / 1000 * 3);
+            for (const deck of e.decks) deck.density = clamp(deck.density * factor, 0.04, 1);
+        },
+
+        // Coarse control, once per bar: masks come off when the screen is far too
+        // empty and go on when it is far too full.
+        steerMasks() {
+            const e = this.engine;
+            const cov = e.coverage || 0, target = this.coverageTarget;
+            const onAir = e.decks[1 - e.offAirDeck];
+            if (cov < target * 0.5 && onAir.mask) {
+                onAir.mask = 0;
+            } else if (cov > target * 1.5 && !onAir.mask && Math.random() < 0.5) {
+                this.chooseMask(1 - e.offAirDeck, true);
+            }
+        },
+
         update(dt, audio) {
+            if (this.enabled && this.options.space) this.steerSpace(dt);
             if (this.enabled && this.options.looks && this.fxTargets) this.animateFx(dt);
             const raw = audio.raw || { volume: audio.volume, bass: audio.bands.bass };
             const level = raw.volume * 0.6 + raw.bass * 0.4;
@@ -278,14 +316,16 @@
                 else if (r < 0.75) e.stepDeckColor(Math.random() < 0.5 ? 'primary' : 'secondary', 1 + CLIFT.util.randInt(3), onAir);
                 else this.applyPalette(onAir);
             }
-            if (o.looks && CLIFT.fx.settings.split === 0 && Math.random() < energy * 0.15) {
+            if (o.space) this.steerMasks();
+            const sparse = o.space && this.coverageTarget < 0.35;
+            if (o.looks && !sparse && CLIFT.fx.settings.split === 0 && Math.random() < energy * 0.15) {
                 CLIFT.fx.settings.split = 1 + CLIFT.util.randInt(3); // a split drifts in...
                 CLIFT.fx.resplit();
             } else if (o.looks && CLIFT.fx.settings.split > 0 && Math.random() < 0.12) {
                 CLIFT.fx.settings.split = 0;                          // ...and out again
             }
             if (o.looks && Math.random() < energy * 0.12) {
-                CLIFT.fx.settings.grid = CLIFT.fx.settings.grid ? 0 : 1 + CLIFT.util.randInt(CLIFT.fx.GRIDS.length - 1);
+                CLIFT.fx.settings.grid = CLIFT.fx.settings.grid || sparse ? 0 : 1 + CLIFT.util.randInt(CLIFT.fx.GRIDS.length - 1);
             }
             if (o.resolution && this.section === 'peak' && Math.random() < 0.1 * this.intensity) this.chooseResolution();
             if (o.postfx && CLIFT.output.options.enabled && Math.random() < 0.2) CLIFT.output.stepStyle(1);
@@ -321,6 +361,11 @@
                 const key = pick(keys);
                 const [lo, hi] = MOTION[key];
                 targets[key] = lo + Math.random() * (hi - lo) * Math.min(1, 0.4 + energy * 0.6);
+            }
+            if (this.options.space && this.coverageTarget < 0.35) {
+                // Sparse moments: trails would fill the empty space back in.
+                targets.feedback = Math.min(targets.feedback || 0, 0.55);
+                targets.liquid = Math.min(targets.liquid || 0, 0.3);
             }
             this.fxTargets = targets;
         },
@@ -359,9 +404,10 @@
                 e.setCrossfader(target);
             }
             if (o.looks) this.chooseLook();
+            if (o.space) this.chooseMask(target);
             if (o.effects) {
                 const chance = { break: 0.1, groove: 0.2, build: 0.3, peak: 0.45 }[this.section] * (0.5 + this.intensity);
-                e.setEffect(Math.random() < chance ? 1 + CLIFT.util.randInt(e.effects.length - 1) : 0);
+                e.setEffect(Math.random() < chance ? this.chooseEffect() : 0);
             }
             if (o.renderModes) {
                 const chance = { break: 0.6, groove: 0.5, build: 0.5, peak: 0.4 }[this.section];
@@ -552,21 +598,51 @@
             e.setCrossfader(target);
         },
 
+        // An ASCII effect that respects the negative space we're aiming for.
+        chooseEffect() {
+            const e = this.engine;
+            const target = this.options.space ? this.coverageTarget : 1;
+            const allowed = e.effects.map((_, i) => i).filter(i => {
+                if (!i) return false;
+                const kind = (e.effectFill || [])[i] || 'clean';
+                return kind === 'clean' || (kind === 'halo' && target >= 0.3) || (kind === 'flood' && target >= 0.85);
+            });
+            return allowed.length ? pick(allowed) : 0;
+        },
+
+        // Shape the incoming deck: calm sections are often confined to a shape.
+        chooseMask(index, force = false) {
+            const deck = this.engine.decks[index];
+            const chance = { break: 0.7, groove: 0.55, build: 0.4, peak: 0.25 }[this.section] * (1.3 - this.fill * 0.6);
+            if (!force && Math.random() >= chance) {
+                deck.mask = 0;
+                return;
+            }
+            const name = pick(SECTIONS[this.section].masks.filter(m => !force || m !== 'Full'));
+            deck.mask = Math.max(0, CLIFT.masks.findIndex(m => m.name === name));
+            deck.maskSize = clamp(0.25 + Math.random() * 0.5 + (this.fill - 0.5) * 0.3, 0.1, 1);
+            deck.maskInvert = Math.random() < 0.2;
+            deck.maskSeed = Math.random() * 1000 | 0;
+        },
+
         status() {
             return {
                 section: this.section,
                 energy: this.fast / Math.max(this.ref, 0.02),
-                nextIn: this.phrase - (this.engine.clock.count % this.phrase)
+                nextIn: this.phrase - (this.engine.clock.count % this.phrase),
+                coverage: this.engine.coverage || 0,
+                coverageTarget: this.coverageTarget
             };
         },
 
         getState() {
-            return { intensity: this.intensity, phrase: this.phrase, options: { ...this.options } };
+            return { intensity: this.intensity, fill: this.fill, phrase: this.phrase, options: { ...this.options } };
         },
 
         setState(state) {
             if (!state) return;
             if (typeof state.intensity === 'number') this.intensity = clamp(state.intensity, 0, 1);
+            if (typeof state.fill === 'number') this.fill = clamp(state.fill, 0, 1);
             if (this.phrases.includes(state.phrase)) this.phrase = state.phrase;
             // Options saved before v3.2 (no 'colorModes' key) predate "everything on" -> keep defaults.
             if (!state.options || !('colorModes' in state.options)) return;

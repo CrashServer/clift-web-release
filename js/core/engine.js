@@ -11,7 +11,7 @@
         '3D Perspective', '3D Cylinder', '3D Sphere', '3D Tunnel',
         'Edge Detection', 'Emboss', 'Motion Blur', 'Sharpen', 'ASCII Blur', 'Dither'];
 
-    const MIX_MODES = ['Auto', 'Dissolve', 'Checker', 'H-Stripes', 'V-Stripes', 'Wipe', 'Radial', 'Glitch'];
+    const MIX_MODES = ['Auto', 'Dissolve', 'Checker', 'H-Stripes', 'V-Stripes', 'Wipe', 'Radial', 'Glitch', 'Layer'];
     const COLOR_MODES = ['Full', 'Mono', 'Accent'];
     const RESOLUTIONS = [[40, 12], [60, 18], [80, 24], [100, 30], [120, 36], [160, 48], [200, 60]];
     const TRANSITION_BEATS = [1, 2, 4, 8, 16];
@@ -29,6 +29,10 @@
             speed: 0.5,   // 0..1 -> 0.25x..4x scene time
             pulse: 0.25,  // 0..1 -> how much bass / beats push scene time forward
             time: 10000,  // the deck's own scene clock (ms)
+            density: 1,   // 0..1 how much of the scene is kept (see composition.js)
+            mask: 0,      // index into CLIFT.masks
+            maskSize: 0.5,
+            maskInvert: false,
             state: {}     // persistent params object for the current scene (see buildParams)
         };
     }
@@ -147,6 +151,7 @@
         // ---- main loop -------------------------------------------------------
 
         start() {
+            this.profileEffects();
             this.running = true;
             this.lastFrameTime = performance.now();
             this.fpsSince = this.lastFrameTime;
@@ -183,6 +188,7 @@
                 this.mixBuffers();
                 if (this.currentEffect > 0) this.applyEffect();
                 CLIFT.textOverlay.apply(this);
+                this.measureCoverage(dt);
 
                 if (this.renderMode !== 0) {
                     this.drawRenderMode();
@@ -364,6 +370,7 @@
                 }
             }
             if (!fn || CLIFT.catalog.broken.has(id)) this.renderPlaceholder(buffer, id, !fn);
+            this.compose(deck, buffer);
             this.colorize(deck, buffer, colorBuffer);
         }
 
@@ -428,6 +435,21 @@
             // Each cell gets a threshold in [0, 1); it shows deck A while threshold >= crossfader.
             // Patterns only differ in how thresholds are laid out, so every mode fades smoothly.
             let mode = this.mixMode;
+            if (mode === 8) {
+                // Layer: the dominant deck's glyphs drawn over the other deck.
+                const [top, topC, under, underC] = c < 0.5
+                    ? [bufferA, colorBufferA, bufferB, colorBufferB] : [bufferB, colorBufferB, bufferA, colorBufferA];
+                for (let y = 0; y < h; y++) {
+                    const o = outputBuffer[y], oc = outputColorBuffer[y];
+                    for (let x = 0; x < w; x++) {
+                        const t = top[y][x];
+                        const useTop = t && t !== ' ';
+                        o[x] = useTop ? t : under[y][x];
+                        oc[x] = useTop ? topC[y][x] : underC[y][x];
+                    }
+                }
+                return;
+            }
             if (mode === 0) mode = 2 + Math.floor(this.clock.time / 2000) % 3; // Auto: rotate patterns
             const rowNoise = mode === 7 ? Array.from({ length: h }, () => Math.random()) : null;
             const cx = w / 2, cy = h / 2, maxR = Math.hypot(cx, cy * 2);
@@ -590,7 +612,7 @@
         }
     }
 
-    Object.assign(CLIFTEngine.prototype, CLIFT.renderModeMethods);
+    Object.assign(CLIFTEngine.prototype, CLIFT.renderModeMethods, CLIFT.compositionMethods);
     CLIFT.Engine = CLIFTEngine;
     window.CLIFTEngine = CLIFTEngine;
 })();
