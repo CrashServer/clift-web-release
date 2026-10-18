@@ -10,6 +10,10 @@
 //    long dissolves in breakdowns, quick wipes in builds, hard cuts at peaks
 //  - on a drop: instant cut to a high-energy scene with explosion / shockwave /
 //    glitch / strobe, and the text overlay if there is a message
+//  - frames it all with a 3D camera (macro close-ups, floors, tunnels, corridors,
+//    globes, swinging screens) chosen per section, accelerating into drops
+//  - every choice goes through CLIFT.variety, which remembers what was used
+//    recently and rotates through everything instead of repeating favorites
 //  - uses everything else too: deck speed, scene params, color modes, invert,
 //    CRT post-FX, render modes, grid size, tiles / split / glitch hits, the text
 //    overlay and your saved snapshots. Each can be excluded in the options.
@@ -19,17 +23,38 @@
 (function () {
     const { pick, clamp } = CLIFT.util;
 
+    // Per section: energy target, lit-screen coverage (before the Fill slider),
+    // transition lengths, and weighted menus the variety picker draws from.
+    // Looks here are 2D ones; camera shots are chosen separately (cams).
     const SECTIONS = {
-        // coverage = how much of the screen should be lit (before the Fill slider)
-        break: { target: 0.2, coverage: 0.1, transition: [16, 8], mix: [1, 6, 8, 8], looks: ['clean', 'clean', 'trails', 'liquid', 'melt'],
+        break: { target: 0.2, coverage: 0.1, transition: [16, 8], mix: [[1, 2], [6, 2], [8, 3]],
+            looks: [['clean', 3], ['trails', 2], ['liquid', 2], ['melt', 1], ['mirror', 1]],
+            cams: [['Flat', 2], ['Macro', 3], ['Globe', 2], ['Screen', 2], ['Floor', 1]],
             masks: ['Circle', 'Ring', 'Band ═', 'Spotlight', 'Lower third', 'Frame', 'Scanner'] },
-        groove: { target: 0.5, coverage: 0.25, transition: [8, 4], mix: [0, 2, 3, 4, 8, 8], looks: ['clean', 'trails', 'mirror', 'panels', 'slicer', 'tiles'],
+        groove: { target: 0.5, coverage: 0.25, transition: [8, 4], mix: [[0, 1], [2, 1], [3, 1], [4, 1], [1, 1], [8, 3]],
+            looks: [['clean', 3], ['trails', 2], ['mirror', 2], ['panels', 2], ['slicer', 2], ['tiles', 1], ['liquid', 1], ['vortex', 1]],
+            cams: [['Flat', 3], ['Floor', 2], ['Screen', 2], ['Macro', 2], ['Globe', 1], ['Corridor', 1]],
             masks: ['Band ═', 'Band ║', 'Box', 'Left', 'Right', 'Scanner', 'Stripes', 'Blocks', 'Diagonal', 'Spotlight'] },
-        build: { target: 0.65, coverage: 0.4, transition: [4, 2], mix: [5, 6, 8], looks: ['tunnel', 'slicer', 'glitch', 'liquid', 'melt'],
+        build: { target: 0.65, coverage: 0.4, transition: [4, 2], mix: [[5, 2], [6, 2], [8, 2], [3, 1]],
+            looks: [['vortex', 2], ['slicer', 2], ['glitch', 2], ['liquid', 1], ['melt', 1], ['panels', 1]],
+            cams: [['Tunnel', 3], ['Corridor', 3], ['Floor', 2], ['Macro', 1], ['Flat', 1]],
             masks: ['Scanner', 'Blocks', 'Ring', 'Box', 'Band ═'] },
-        peak: { target: 0.85, coverage: 0.6, transition: [1, 0], mix: [7, 2, 8], looks: ['storm', 'panels', 'glitch', 'shatter', 'datamosh', 'acid', 'mosaic'],
+        peak: { target: 0.85, coverage: 0.6, transition: [1, 0], mix: [[7, 2], [2, 1], [8, 2], [5, 1]],
+            looks: [['storm', 2], ['panels', 2], ['glitch', 2], ['datamosh', 2], ['acid', 1], ['mosaic', 1], ['tiles', 1], ['shatter', 0.4]],
+            cams: [['Flat', 2], ['Tunnel', 2], ['Corridor', 2], ['Macro', 2], ['Globe', 1], ['Screen', 1], ['Floor', 1]],
             masks: ['Blocks', 'Circle', 'Frame', 'Full'] }
     };
+
+    // What happens on a drop (one of these, rotated by the variety picker).
+    // The Voronoi explosion is deliberately the rarest.
+    const IMPACTS = [
+        ['slam', 3, ['slam', 'strobe', 'burst']],
+        ['glitchStorm', 3, ['glitch', 'split', 'strobe']],
+        ['splitBurst', 2, ['split', 'punch', 'invert']],
+        ['strobeInvert', 2, ['strobe', 'invert', 'punch']],
+        ['shockwave', 2, ['shock', 'punch', 'burst']],
+        ['explode', 1, ['explode', 'shock', 'strobe']]
+    ];
 
     // Color pairs that work together, with a "temperature" (0 cool .. 1 hot).
     const PALETTES = [
@@ -41,10 +66,11 @@
 
     // Hits per section: [kind, weight]. Peaks use everything.
     const HITS = {
-        break: [['hueJump', 3], ['burst', 3], ['shock', 1]],
-        groove: [['punch', 4], ['hueJump', 3], ['split', 3], ['glitch', 2], ['burst', 2], ['grid', 1], ['invert', 1], ['shock', 1]],
-        build: [['glitch', 4], ['punch', 3], ['split', 3], ['shock', 2], ['strobe', 1], ['hueJump', 1]],
-        peak: [['explode', 3], ['shock', 3], ['glitch', 3], ['punch', 3], ['strobe', 2], ['invert', 2], ['split', 3], ['burst', 2], ['grid', 1], ['hueJump', 2]]
+        break: [['hueJump', 3], ['burst', 3], ['shock', 1], ['camCut', 2]],
+        groove: [['punch', 4], ['hueJump', 3], ['split', 3], ['glitch', 2], ['burst', 2], ['grid', 1], ['invert', 1], ['shock', 1], ['camCut', 2], ['slam', 1]],
+        build: [['glitch', 4], ['punch', 3], ['split', 3], ['shock', 2], ['strobe', 1], ['slam', 2], ['camCut', 1]],
+        peak: [['shock', 3], ['glitch', 3], ['punch', 3], ['strobe', 2], ['invert', 2], ['split', 3], ['burst', 2], ['grid', 1], ['hueJump', 2],
+            ['slam', 3], ['camCut', 2], ['explode', 0.6]]
     };
     // Chance of a hit on the downbeat / on other beats, before intensity.
     const HIT_RATE = {
@@ -58,14 +84,14 @@
     const MOTION = {
         feedback: [0, 0.92], fbZoom: [-0.04, 0.07], fbRotate: [-0.6, 0.6], fbHue: [0, 0.6],
         glitch: [0, 0.6], shatter: [0, 0.35], displace: [0, 0.6], liquid: [0, 0.7], sliceAmount: [0.1, 0.8],
-        bassZoom: [0, 0.8], spin: [-0.3, 0.3], wave: [0, 0.5], hueSpeed: [0, 0.5], pixelate: [0, 0.4]
+        bassZoom: [0, 0.8], spin: [-0.3, 0.3], wave: [0, 0.5], hueSpeed: [0, 0.5], pixelate: [0, 0.4],
+        camZoom: [0, 1], camTilt: [-0.8, 0.8], camSpin: [-0.8, 0.8], camFog: [0.1, 0.8], camSpeed: [0.05, 0.95]
     };
-
-    function weighted(list) {
-        let r = Math.random() * list.reduce((a, [, w]) => a + w, 0);
-        for (const [item, w] of list) { r -= w; if (r <= 0) return item; }
-        return list[0][0];
-    }
+    // Effects that may fade in on their own (not shatter: it reads as a honeycomb;
+    // not the camera: shots are chosen deliberately).
+    const EXTRA_KEYS = ['feedback', 'fbZoom', 'fbRotate', 'fbHue', 'glitch', 'displace', 'liquid', 'sliceAmount',
+        'bassZoom', 'spin', 'wave', 'hueSpeed', 'pixelate'];
+    const CAMERA_KEYS = ['cam', 'camZoom', 'camTilt', 'camSpin', 'camSpeed', 'camFog'];
 
     const director = {
         enabled: false,
@@ -89,6 +115,7 @@
             text: true,
             snapshots: true,
             space: true,
+            camera: true,
             favoritesOnly: false
         },
         fill: 0.4,          // 0 = sparse .. 1 = full screen; scales the coverage targets
@@ -109,6 +136,7 @@
             text: 'Text overlay',
             snapshots: 'My snapshots',
             space: 'Negative space',
+            camera: '3D camera',
             favoritesOnly: 'Favorites only'
         },
         textUntil: 0,       // beat at which the Director hides the text it showed
@@ -299,8 +327,15 @@
             let chance = (count % 4 === 0 ? down : other) * (0.35 + this.intensity * 0.8);
             if (this.section === 'build') chance += toEnd * 0.5 * this.intensity;
             if (Math.random() >= chance) return;
-            const kind = weighted(HITS[this.section]);
-            CLIFT.fx.hit(kind, 0.6 + this.intensity * 0.4);
+            this.hit(CLIFT.variety.pick('hits', HITS[this.section]), 0.6 + this.intensity * 0.4);
+        },
+
+        // Camera hits need a 3D shot; on a flat image they become their 2D cousins.
+        hit(kind, strength = 1) {
+            const flat = !CLIFT.fx.settings.cam;
+            if (flat && kind === 'slam') kind = 'punch';
+            if (flat && kind === 'camCut') kind = 'hueJump';
+            CLIFT.fx.hit(kind, strength);
         },
 
         // Every bar: new FX motion targets, small color / split / tint changes.
@@ -330,12 +365,11 @@
             if (o.resolution && this.section === 'peak' && Math.random() < 0.1 * this.intensity) this.chooseResolution();
             if (o.postfx && CLIFT.output.options.enabled && Math.random() < 0.2) CLIFT.output.stepStyle(1);
             if (o.renderModes) {
-                const modes = e.renderModes.length;
                 if (e.renderMode !== 0 && Math.random() < 0.3) {
                     // hop to another render mode, or back to plain ASCII
-                    e.setRenderMode(Math.random() < 0.5 ? 0 : 1 + CLIFT.util.randInt(modes - 1));
+                    e.setRenderMode(Math.random() < 0.5 ? 0 : this.chooseRenderMode());
                 } else if (e.renderMode === 0 && Math.random() < 0.15 * energy) {
-                    e.setRenderMode(1 + CLIFT.util.randInt(modes - 1));
+                    e.setRenderMode(this.chooseRenderMode());
                 }
             }
             CLIFT.events.emit('state');
@@ -355,12 +389,16 @@
                     targets[key] = 0;
                 }
             }
-            const keys = Object.keys(MOTION);
             const extras = 1 + Math.floor(Math.random() * (1 + energy * 2));
             for (let i = 0; i < extras; i++) {
-                const key = pick(keys);
+                const key = CLIFT.variety.pick('motion', EXTRA_KEYS);
                 const [lo, hi] = MOTION[key];
                 targets[key] = lo + Math.random() * (hi - lo) * Math.min(1, 0.4 + energy * 0.6);
+            }
+            if (this.section === 'build' && CLIFT.fx.settings.cam) {
+                // Build-ups accelerate the camera toward the drop.
+                const toEnd = 1 - (this.phrase - (this.engine.clock.count % this.phrase)) / this.phrase;
+                targets.camSpeed = clamp(0.35 + toEnd * 0.6, 0.05, 0.95);
             }
             if (this.options.space && this.coverageTarget < 0.35) {
                 // Sparse moments: trails would fill the empty space back in.
@@ -392,7 +430,7 @@
             }
             if (o.crossfade) {
                 const beats = pick(s.transition);
-                e.mixMode = pick(s.mix);
+                e.mixMode = CLIFT.variety.pick('mix', s.mix);
                 if (beats === 0) {
                     e.transition = null;
                     e.setCrossfader(target);
@@ -404,6 +442,7 @@
                 e.setCrossfader(target);
             }
             if (o.looks) this.chooseLook();
+            if (o.camera) this.chooseCamera();
             if (o.space) this.chooseMask(target);
             if (o.effects) {
                 const chance = { break: 0.1, groove: 0.2, build: 0.3, peak: 0.45 }[this.section] * (0.5 + this.intensity);
@@ -411,7 +450,7 @@
             }
             if (o.renderModes) {
                 const chance = { break: 0.6, groove: 0.5, build: 0.5, peak: 0.4 }[this.section];
-                e.setRenderMode(Math.random() < chance ? 1 + CLIFT.util.randInt(e.renderModes.length - 1) : 0);
+                e.setRenderMode(Math.random() < chance ? this.chooseRenderMode() : 0);
             }
             if (o.resolution && Math.random() < 0.85) this.chooseResolution();
             if (o.colorModes) {
@@ -485,12 +524,13 @@
             const e = this.engine;
             const o = this.options;
             if (o.looks) this.chooseLook();
+            if (o.camera) this.chooseCamera();
             if (o.scenes) {
                 const target = e.offAirDeck;
                 e.setScene(this.chooseScene(this.energyTarget), target);
                 if (o.colors) this.applyPalette(target);
                 this.tuneDeck(target);
-                e.mixMode = pick(SECTIONS.break.mix);
+                e.mixMode = CLIFT.variety.pick('mix', SECTIONS.break.mix);
                 e.transitionBeats = 8;
                 e.startTransition(target);
             }
@@ -514,16 +554,15 @@
             e.transition = null;
             e.setCrossfader(target);
             if (o.looks) this.chooseLook(0.9);
+            if (o.camera) this.chooseCamera();
             if (o.colorModes) e.colorMode = 0;
             if (o.resolution) this.chooseResolution('peak');
             if (o.postfx && CLIFT.output.supported) this.choosePostFx();
             if (o.text && CLIFT.textOverlay.text && !this.textOwnedByUser()) this.showText('big', 8);
             if (o.hits) {
-                CLIFT.fx.hit('strobe');
-                CLIFT.fx.hit('explode');
-                CLIFT.fx.hit('shock');
-                CLIFT.fx.hit('glitch');
-                CLIFT.fx.hit('burst');
+                const impact = CLIFT.variety.pick('impact', IMPACTS.map(([name, w]) => [name, w]));
+                for (const kind of IMPACTS.find(i => i[0] === impact)[2]) this.hit(kind, 1);
+                this.lastImpact = impact;
             }
             CLIFT.events.emit('director-drop');
         },
@@ -538,10 +577,13 @@
             if (fresh.length) pool = fresh;
             if (!pool.length) return onAir[0];
 
+            // Energy fit x novelty of the scene's bank, so sets travel across scene families.
+            const bankOf = id => CLIFT.catalog.bankIndexOf(id);
             const weights = pool.map(id => {
                 const [energy, weight] = (cat.meta && cat.meta[id]) || [0.5, 1];
                 const d = energy - target;
-                return weight * Math.exp(-(d * d) / (2 * 0.15 * 0.15)) + 0.01;
+                const bankUse = CLIFT.variety.score('bank', bankOf(id));
+                return (weight * Math.exp(-(d * d) / (2 * 0.15 * 0.15)) + 0.01) / Math.pow(1 + bankUse * 2, 2);
             });
             let r = Math.random() * weights.reduce((a, b) => a + b, 0);
             let id = pool[pool.length - 1];
@@ -549,16 +591,15 @@
                 r -= weights[i];
                 if (r <= 0) { id = pool[i]; break; }
             }
+            CLIFT.variety.note('bank', bankOf(id));
             this.recent.push(id);
             if (this.recent.length > RECENT) this.recent.shift();
             return id;
         },
 
         applyPalette(deckIndex, heat = this.energyTarget) {
-            const weights = PALETTES.map(p => Math.exp(-Math.pow(p[2] - heat, 2) / 0.08));
-            let r = Math.random() * weights.reduce((a, b) => a + b, 0);
-            let pal = PALETTES[0];
-            for (let i = 0; i < PALETTES.length; i++) { r -= weights[i]; if (r <= 0) { pal = PALETTES[i]; break; } }
+            const choice = CLIFT.variety.pick('palette', PALETTES.map((p, i) => [i, Math.exp(-Math.pow(p[2] - heat, 2) / 0.08) + 0.02]));
+            const pal = PALETTES[choice];
             const deck = this.engine.decks[deckIndex];
             const flip = Math.random() < 0.5;
             deck.primaryColor = flip ? pal[1] : pal[0];
@@ -567,24 +608,47 @@
         },
 
         chooseLook(target = this.energyTarget) {
-            const looks = SECTIONS[this.section].looks;
-            // Lower intensity favors the gentler looks of the section.
-            const scored = looks.map(name => {
+            // Section weights, nudged toward looks whose energy suits the moment
+            // (lower intensity favors the gentler ones); the variety picker does the rest.
+            const looks = SECTIONS[this.section].looks.map(([name, w]) => {
                 const d = CLIFT.fx.LOOKS[name].energy - target * (0.6 + this.intensity * 0.5);
-                return [name, Math.exp(-(d * d) / 0.05)];
+                return [name, w * (0.3 + Math.exp(-(d * d) / 0.08))];
             });
-            let r = Math.random() * scored.reduce((a, [, w]) => a + w, 0);
-            for (const [name, w] of scored) {
-                r -= w;
-                if (r <= 0) return this.useLook(name);
-            }
-            this.useLook(looks[0]);
+            this.useLook(CLIFT.variety.pick('looks', looks));
         },
 
+        // Apply a 2D look without touching the current camera shot.
         useLook(name) {
-            CLIFT.fx.applyLook(name);
-            this.lookBase = { ...CLIFT.fx.settings };
+            const fx = CLIFT.fx;
+            const cam = Object.fromEntries(CAMERA_KEYS.map(k => [k, fx.settings[k]]));
+            fx.applyLook(name);
+            Object.assign(fx.settings, cam);
+            this.lookBase = { ...fx.settings };
             this.fxTargets = null;
+        },
+
+        // A camera shot for the section: which 3D surface, how close, how fast.
+        chooseCamera() {
+            const fx = CLIFT.fx;
+            const s = fx.settings;
+            const name = CLIFT.variety.pick('camera', SECTIONS[this.section].cams);
+            s.cam = Math.max(0, fx.CAMERAS.indexOf(name));
+            const r = Math.random;
+            const [lo, hi] = { break: [0.08, 0.3], groove: [0.2, 0.45], build: [0.4, 0.7], peak: [0.5, 0.9] }[this.section];
+            s.camSpeed = lo + r() * (hi - lo);
+            s.camZoom = name === 'Macro' ? 0.2 + r() * 0.7 : r() * 0.5;
+            s.camTilt = (r() * 2 - 1) * 0.55;
+            s.camSpin = (r() < 0.5 ? -1 : 1) * (0.08 + r() * 0.45) * (0.5 + this.intensity * 0.7);
+            s.camFog = 0.2 + r() * 0.45;
+            if (s.cam) fx.hit('camCut');
+            fx.look = '';
+            this.lookBase = { ...s };
+            this.fxTargets = null;
+        },
+
+        chooseRenderMode() {
+            const e = this.engine;
+            return CLIFT.variety.pick('render', e.renderModes.map((_, i) => i).slice(1));
         },
 
         // Used by the "Scene change" beat action.
@@ -607,7 +671,7 @@
                 const kind = (e.effectFill || [])[i] || 'clean';
                 return kind === 'clean' || (kind === 'halo' && target >= 0.3) || (kind === 'flood' && target >= 0.85);
             });
-            return allowed.length ? pick(allowed) : 0;
+            return allowed.length ? CLIFT.variety.pick('effects', allowed) : 0;
         },
 
         // Shape the incoming deck: calm sections are often confined to a shape.
@@ -618,7 +682,7 @@
                 deck.mask = 0;
                 return;
             }
-            const name = pick(SECTIONS[this.section].masks.filter(m => !force || m !== 'Full'));
+            const name = CLIFT.variety.pick('masks', SECTIONS[this.section].masks.filter(m => !force || m !== 'Full'));
             deck.mask = Math.max(0, CLIFT.masks.findIndex(m => m.name === name));
             deck.maskSize = clamp(0.25 + Math.random() * 0.5 + (this.fill - 0.5) * 0.3, 0.1, 1);
             deck.maskInvert = Math.random() < 0.2;
@@ -630,6 +694,7 @@
                 section: this.section,
                 energy: this.fast / Math.max(this.ref, 0.02),
                 nextIn: this.phrase - (this.engine.clock.count % this.phrase),
+                shot: CLIFT.fx.CAMERAS[CLIFT.fx.settings.cam],
                 coverage: this.engine.coverage || 0,
                 coverageTarget: this.coverageTarget
             };

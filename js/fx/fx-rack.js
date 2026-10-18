@@ -8,6 +8,9 @@
 //   feedback  - the previous frame zoomed / rotated / hue-shifted under the new one
 //   tiles     - repeated / mirrored tiles; plus bass zoom, spin, wave, pixelate
 //   color     - hue cycling, posterize, invert / strobe flashes
+//   camera    - the whole image as a surface in 3D: macro close-ups, an infinite
+//               floor, tunnel, corridor, globe, a screen swinging in space; depth
+//               fog turns distance into black
 //
 // Settings are plain numbers (saved in sessions and snapshots). Hits are
 // envelopes fired by buttons, MIDI, beat actions and the Director.
@@ -28,9 +31,16 @@
     ];
 
     const SPLITS = ['Off', 'Panels', 'Slices ═', 'Slices ║'];
+    const CAMERAS = ['Flat', 'Macro', 'Floor', 'Tunnel', 'Corridor', 'Globe', 'Screen'];
     const SPLIT_EVERY = [0, 1, 2, 4, 8]; // beats between re-cuts, 0 = only on hits
 
     const DEFAULTS = {
+        cam: 0,             // index into CAMERAS
+        camZoom: 0.3,       // 0..1 (Macro: 1.5x..10x)
+        camTilt: 0,         // -1..1 horizon / pitch / off-center
+        camSpin: 0.2,       // -1..1 rotation speed
+        camSpeed: 0.3,      // 0..1 travel speed (pushed by the bass)
+        camFog: 0.4,        // 0..1 distance fades to black
         split: 0,           // index into SPLITS
         splitEvery: 2,      // re-cut / re-slide every N beats
         sliceAmount: 0.35,  // how far slices slide
@@ -62,7 +72,7 @@
         melt: look(0.45, { feedback: 0.9, fbZoom: -0.015, fbHue: 0.35, wave: 0.45 }),
         mirror: look(0.5, { grid: 7, bassZoom: 0.5 }),
         panels: look(0.55, { split: 1, splitEvery: 2, bassZoom: 0.3 }),
-        tunnel: look(0.6, { feedback: 0.88, fbZoom: 0.035, fbRotate: 0.15, fbHue: 0.15, bassZoom: 0.4 }),
+        vortex: look(0.6, { feedback: 0.88, fbZoom: 0.035, fbRotate: 0.15, fbHue: 0.15, bassZoom: 0.4 }),
         slicer: look(0.6, { split: 2, splitEvery: 1, sliceAmount: 0.5, feedback: 0.5, fbZoom: 0 }),
         tiles: look(0.65, { grid: 4, feedback: 0.6, fbZoom: 0.02, bassZoom: 0.35 }),
         glitch: look(0.7, { glitch: 0.45, split: 3, splitEvery: 2, sliceAmount: 0.2 }),
@@ -70,11 +80,18 @@
         datamosh: look(0.75, { glitch: 0.3, liquid: 0.5, displace: 0.2, feedback: 0.9, fbZoom: 0 }),
         shatter: look(0.8, { shatter: 0.35, feedback: 0.6, fbZoom: 0.02, bassZoom: 0.3 }),
         acid: look(0.85, { grid: 9, hueSpeed: 0.4, feedback: 0.85, fbHue: 0.6, displace: 0.25, bassZoom: 0.5 }),
-        storm: look(0.95, { split: 1, splitEvery: 1, glitch: 0.3, displace: 0.3, feedback: 0.7, fbZoom: 0.05, bassZoom: 0.6 })
+        storm: look(0.95, { split: 1, splitEvery: 1, glitch: 0.3, displace: 0.3, feedback: 0.7, fbZoom: 0.05, bassZoom: 0.6 }),
+        // camera looks
+        macro: look(0.3, { cam: 1, camZoom: 0.45, camSpeed: 0.2, camSpin: 0.1 }),
+        globe: look(0.4, { cam: 5, camZoom: 0.3, camSpin: 0.35, camTilt: 0.35, camSpeed: 0.2 }),
+        screen: look(0.5, { cam: 6, camZoom: 0.25, camSpin: 0.5, camTilt: 0.25, camFog: 0.2 }),
+        floor: look(0.55, { cam: 2, camTilt: 0.2, camSpeed: 0.45, camFog: 0.55, camZoom: 0.2 }),
+        corridor: look(0.7, { cam: 4, camSpeed: 0.55, camFog: 0.5, camZoom: 0.25 }),
+        tunnel: look(0.8, { cam: 3, camSpeed: 0.65, camSpin: 0.3, camFog: 0.45, camTilt: 0.4, camZoom: 0.2 })
     };
 
     // Envelope lengths in ms. 'explode' / 'shock' run 0 -> 1 (progress), the rest 1 -> 0.
-    const ENVELOPES = { strobe: 90, invert: 140, punch: 220, burst: 600, glitch: 450, split: 500, explode: 750, shock: 650 };
+    const ENVELOPES = { strobe: 90, invert: 140, punch: 220, burst: 600, glitch: 450, split: 500, explode: 750, shock: 650, slam: 900 };
     const PROGRESS = new Set(['explode', 'shock']);
 
     const rand = Math.random;
@@ -82,12 +99,16 @@
     const rack = {
         GRIDS,
         SPLITS,
+        CAMERAS,
         SPLIT_EVERY,
         LOOKS,
         lookNames: Object.keys(LOOKS),
         look: 'clean',
         settings: { ...DEFAULTS },
-        env: { strobe: 0, invert: 0, punch: 0, burst: 0, glitch: 0, split: 0, explode: 0, shock: 0 },
+        env: { strobe: 0, invert: 0, punch: 0, burst: 0, glitch: 0, split: 0, explode: 0, shock: 0, slam: 0 },
+        camTravel: 0,
+        camAngle: 0,
+        camSeed: 0,
         hueOffset: 0,
         angle: 0,
         panels: new Float32Array(0),
@@ -179,7 +200,20 @@
 
         // ---- hits -------------------------------------------------------------------
 
+        stepCamera(dir = 1) {
+            this.set('cam', CLIFT.util.wrap(this.settings.cam + dir, CAMERAS.length));
+        },
+
         hit(kind, strength = 1) {
+            if (kind === 'camCut') {
+                // Same camera, new shot: another spot, angle and direction.
+                this.camSeed = rand() * 100;
+                this.camTravel += 3 + rand() * 20;
+                this.camAngle = rand() * Math.PI * 2;
+                this.settings.camTilt = (rand() * 2 - 1) * 0.6;
+                this.settings.camSpin = (rand() < 0.5 ? -1 : 1) * Math.abs(this.settings.camSpin || 0.2);
+                return;
+            }
             if (kind === 'hueJump') {
                 this.hueOffset = (this.hueOffset + 0.2 + rand() * 0.6) % 1;
             } else if (kind === 'grid') {
@@ -204,7 +238,7 @@
         // Anything that needs the full-screen FX pass this frame?
         get active() {
             const s = this.settings, e = this.env;
-            return s.feedback > 0 || s.grid > 0 || s.split > 0 || s.glitch > 0 || s.shatter > 0 || s.displace > 0 ||
+            return s.cam > 0 || s.feedback > 0 || s.grid > 0 || s.split > 0 || s.glitch > 0 || s.shatter > 0 || s.displace > 0 ||
                 s.liquid > 0 || s.bassZoom > 0 || s.spin !== 0 || s.wave > 0 || s.pixelate > 0 || s.hueSpeed > 0 ||
                 s.posterize > 0 || s.invert || this.hueOffset !== 0 || Object.values(e).some(v => v > 0.01);
         },
@@ -221,6 +255,9 @@
             const sec = dt / 1000;
 
             this.angle += s.spin * sec * 1.5;
+            this.camTravel += sec * s.camSpeed * 1.4 * (1 + bass * 1.2);
+            this.camAngle += sec * s.camSpin * 0.9;
+            const ct = this.camTravel * 0.25 + this.camSeed;
             this.hueOffset = (this.hueOffset + s.hueSpeed * sec * 0.25) % 1;
             this.sliceMix = Math.min(1, this.sliceMix + dt / 140);
             const glitch = Math.min(1, s.glitch * (0.5 + beat) + e.glitch * 0.9);
@@ -229,6 +266,14 @@
             const explode = e.explode > 0 ? Math.sin(Math.PI * e.explode) * (this.explodeStrength || 1) : 0;
 
             this.u = {
+                cam: s.cam,
+                camZoom: s.camZoom,
+                camTilt: s.camTilt,
+                camFog: s.camFog,
+                camTravel: this.camTravel,
+                camAngle: this.camAngle,
+                camCenter: [0.5 + 0.35 * Math.sin(ct * 0.37 + 1.3) * Math.cos(ct * 0.21), 0.5 + 0.35 * Math.sin(ct * 0.29 + 0.4)],
+                camSlam: e.slam * e.slam * 1.5,
                 gridCols: grid.cols,
                 gridRows: grid.rows,
                 gridMirror: grid.mirror,
@@ -273,6 +318,7 @@
             }
             this.settings.grid = CLIFT.util.clamp(this.settings.grid | 0, 0, GRIDS.length - 1);
             this.settings.split = CLIFT.util.clamp(this.settings.split | 0, 0, SPLITS.length - 1);
+            this.settings.cam = CLIFT.util.clamp(this.settings.cam | 0, 0, CAMERAS.length - 1);
             if (!SPLIT_EVERY.includes(this.settings.splitEvery)) this.settings.splitEvery = DEFAULTS.splitEvery;
             this.look = LOOKS[state.look] ? state.look : '';
             CLIFT.events.emit('state');

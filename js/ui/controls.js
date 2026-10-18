@@ -653,10 +653,13 @@
             bar.appendChild(fill);
             const next = document.createElement('span');
             next.textContent = `next in ${st.nextIn}`;
+            const shot = document.createElement('span');
+            shot.textContent = st.shot.toLowerCase();
+            shot.title = 'Camera shot';
             const lit = document.createElement('span');
             lit.title = 'Screen lit now -> target (negative space)';
             lit.textContent = `lit ${Math.round(st.coverage * 100)}→${Math.round(st.coverageTarget * 100)}%`;
-            el.append(sec, bar, lit, next);
+            el.append(sec, shot, bar, lit, next);
         },
 
         // ---- visual FX ------------------------------------------------------------
@@ -676,12 +679,19 @@
             };
             fillSelect($('vfx-grid'), fx.GRIDS.map((g, i) => [i, g.name]));
             $('vfx-grid').onchange = (ev) => fx.set('grid', Number(ev.target.value));
+            fillSelect($('vfx-cam'), fx.CAMERAS.map((n, i) => [i, n]));
+            $('vfx-cam').onchange = (ev) => fx.set('cam', Number(ev.target.value));
             fillSelect($('vfx-split'), fx.SPLITS.map((n, i) => [i, n]));
             $('vfx-split').onchange = (ev) => { fx.set('split', Number(ev.target.value)); fx.resplit(); };
             fillSelect($('vfx-split-every'), fx.SPLIT_EVERY.map(n => [n, n ? `every ${n}` : 'on hits']));
             $('vfx-split-every').onchange = (ev) => fx.set('splitEvery', Number(ev.target.value));
 
             const SLIDERS = [
+                ['camZoom', 'Cam zoom', 0, 1, 0.01],
+                ['camTilt', 'Cam tilt', -1, 1, 0.02],
+                ['camSpin', 'Cam spin', -1, 1, 0.02],
+                ['camSpeed', 'Cam speed', 0, 1, 0.01],
+                ['camFog', 'Cam fog', 0, 1, 0.01],
                 ['sliceAmount', 'Slice shift', 0, 1, 0.05],
                 ['glitch', 'Glitch', 0, 1, 0.05],
                 ['shatter', 'Shatter', 0, 1, 0.05],
@@ -721,7 +731,7 @@
             }
 
             const hits = $('vfx-hits');
-            for (const [kind, label] of [['explode', 'explode'], ['shock', 'shock'], ['glitch', 'glitch'], ['split', 'split'],
+            for (const [kind, label] of [['slam', 'slam'], ['camCut', 'cam cut'], ['explode', 'explode'], ['shock', 'shock'], ['glitch', 'glitch'], ['split', 'split'],
                 ['strobe', 'strobe'], ['invert', 'invert'], ['punch', 'punch'], ['hueJump', 'hue'], ['burst', 'burst']]) {
                 const b = document.createElement('button');
                 b.textContent = label;
@@ -745,6 +755,7 @@
             for (const b of $('vfx-looks').children) b.classList.toggle('on', b.dataset.look === fx.look);
             $('vfx-grid').value = fx.settings.grid;
             $('vfx-split').value = fx.settings.split;
+            $('vfx-cam').value = fx.settings.cam;
             $('vfx-split-every').value = fx.settings.splitEvery;
             for (const [key, input] of Object.entries(this.vfxInputs)) {
                 input.value = fx.settings[key];

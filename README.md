@@ -52,6 +52,11 @@ permission and also works when the page is opened from disk (`file://`).
   or play an audio file (drop it onto the page). 64-band log spectrum, 5 bands,
   beat detection, tempo estimation and auto-level (keeps quiet inputs and highs lively)
 - **Tempo**: BPM clock, tap tempo (re-syncs the downbeat), sync to detected BPM
+- **3D camera** (GPU): the whole mixed image becomes a surface seen by a moving camera -
+  **Macro** (extreme close-ups drifting over the image), **Floor** (infinite plane to the
+  horizon), **Tunnel**, **Corridor**, **Globe** (lit rotating sphere), **Screen** (a giant
+  screen swinging in space). Zoom, tilt, spin, travel speed (pushed by the bass), depth
+  fog to black; camera slam and camera cut hits
 - **Visual FX** (GPU, on the whole image):
   - **dynamic split**: panels re-cut on the beat (each panel its own window of the image -
     offset, zoomed, flipped) or sliding horizontal / vertical slices
@@ -79,6 +84,13 @@ permission and also works when the page is opened from disk (`file://`).
   the screen is lit and steers density and masks toward a target per section (about 10%
   in breakdowns up to 60% at peaks), scaled by the **Fill** slider (sparse .. full), and
   keeps screen-filling effects (Invert, blurs, heavy trails) for the full moments.
+  It frames everything with camera shots per section (slow macro / globe shots in
+  breakdowns, floors and swinging screens in grooves, tunnels and corridors that
+  accelerate into the drop) and varies what happens on a drop (slam, glitch storm,
+  split burst, strobe, shockwave - the explosion is the rarest). Every choice goes
+  through a variety engine that remembers what was used recently - looks, hits, camera
+  shots, masks, mix patterns, render modes, effects, palettes and scene banks - so a set
+  keeps moving through everything instead of repeating favorites.
   Intensity goes from calm to wild; every part can be excluded in its options.
   BPM, audio input, recording, projector and MIDI stay in your hands
 - **Negative space**: per-deck **Density** thins a scene into organic patches of black
@@ -123,6 +135,7 @@ Press **H** in the app for the full list. The essentials:
 | U | hide / show the interface | | W | live-coding server |
 | Shift+1 … 8 | recall snapshot | | L | text overlay |
 | G / Shift+G | next split mode / re-split now | | Y / Shift+Y | feedback on/off / reset FX |
+| Shift+C | next 3D camera | | | |
 
 Digits use the physical number keys, so they also work on AZERTY keyboards without Shift.
 

@@ -69,6 +69,15 @@
         uniform sampler2D u_prev;      // previous FX output (framebuffer, bottom-up)
         uniform vec2 u_resolution;
         uniform float u_time;
+        // 3D camera: 0 flat, 1 macro, 2 floor, 3 tunnel, 4 corridor, 5 globe, 6 screen
+        uniform float u_camMode;
+        uniform float u_camZoom;
+        uniform float u_camTilt;
+        uniform float u_camFog;
+        uniform float u_camTravel;
+        uniform float u_camAngle;
+        uniform vec2 u_camCenter;
+        uniform float u_camSlam;
         // tiles
         uniform vec2 u_grid;
         uniform bool u_gridMirror;
@@ -136,10 +145,78 @@
             return texture2D(u_scene, u_sceneFlip ? vec2(uv.x, 1.0 - uv.y) : uv).rgb;
         }
 
+        // Map a screen position to a position on the image seen through the 3D
+        // camera. 'shade' gets depth fog / lighting (0 = nothing visible there).
+        vec2 camera(vec2 uv, vec2 aspect, out float shade) {
+            shade = 1.0;
+            int m = int(u_camMode + 0.5);
+            if (m == 0) return uv;
+            vec2 p = (uv - 0.5) * aspect;
+            float zoom = 1.0 + u_camSlam;
+            float fog = 0.12 + u_camFog * 0.7;
+
+            if (m == 1) { // macro: extreme close-up drifting over the image
+                float z = (1.5 + u_camZoom * 8.5) * zoom;
+                return u_camCenter + rot(p, u_camAngle * 0.15) / z / aspect;
+            }
+            if (m == 2) { // infinite floor (and ceiling) receding to the horizon
+                float y = p.y - u_camTilt * 0.35;
+                float d = 0.35 / max(abs(y), 0.0005);
+                vec2 w = rot(vec2(p.x * d, d), u_camAngle * 0.08);
+                shade = exp(-d * fog * 0.35) * smoothstep(0.0, 0.015, abs(y));
+                return vec2(w.x, w.y + u_camTravel) * (0.45 / (1.0 + u_camZoom * 2.0)) * zoom;
+            }
+            if (m == 3) { // round tunnel, flying forward
+                vec2 c = p - vec2(sin(u_camTravel * 0.7), cos(u_camTravel * 0.53)) * 0.2 * u_camTilt;
+                float r = length(c);
+                float d = 0.3 / max(r, 0.0005);
+                float a = atan(c.y, c.x) / 6.2831853 + u_camAngle * 0.05 + d * 0.02 * u_camTilt;
+                shade = exp(-d * fog * 0.25);
+                return vec2(a * 2.0, d * 0.35 + u_camTravel) / (1.0 + u_camZoom) * zoom;
+            }
+            if (m == 4) { // square corridor
+                vec2 c = rot(p, u_camAngle * 0.1);
+                float ax = abs(c.x), ay = abs(c.y);
+                float r = max(ax, ay);
+                float d = 0.3 / max(r, 0.0005);
+                vec2 w = ax > ay ? vec2(c.y / ax, d) : vec2(c.x / ay, d);
+                shade = exp(-d * fog * 0.25) * (ax > ay ? 0.8 : 1.0);
+                return vec2(w.x * 0.5 + 0.5, w.y * 0.35 + u_camTravel) / (1.0 + u_camZoom) * zoom;
+            }
+            if (m == 5) { // globe: the image wrapped on a lit, rotating sphere
+                float R = (0.3 + u_camZoom * 0.55) * zoom;
+                float rr = dot(p, p) / (R * R);
+                if (rr > 1.0) { shade = 0.0; return uv; }
+                vec3 n = vec3(p / R, sqrt(1.0 - rr));
+                n.yz = rot(n.yz, u_camTilt * 0.8);
+                n.xz = rot(n.xz, u_camAngle);
+                shade = 0.25 + 0.75 * sqrt(1.0 - rr);
+                return vec2(atan(n.x, n.z) / 6.2831853 * 2.0, acos(clamp(n.y, -1.0, 1.0)) / 3.14159265);
+            }
+            // m == 6: a giant screen swinging in space
+            vec3 ro = vec3(0.0, 0.0, -1.9 / ((0.6 + u_camZoom) * zoom));
+            vec3 rd = normalize(vec3(p, 1.4));
+            float yaw = sin(u_camAngle) * 0.9, pitch = u_camTilt * 0.6;
+            vec3 n = vec3(0.0, 0.0, -1.0), ax = vec3(1.0, 0.0, 0.0), ay = vec3(0.0, 1.0, 0.0);
+            n.yz = rot(n.yz, pitch); ay.yz = rot(ay.yz, pitch);
+            n.xz = rot(n.xz, yaw); ax.xz = rot(ax.xz, yaw); ay.xz = rot(ay.xz, yaw);
+            float den = dot(rd, n);
+            if (abs(den) < 0.0001) { shade = 0.0; return uv; }
+            float t = -dot(ro, n) / den;
+            if (t <= 0.0) { shade = 0.0; return uv; }
+            vec3 h = ro + t * rd;
+            vec2 s = vec2(dot(h, ax), dot(h, ay)) / aspect + 0.5;
+            if (s.x < 0.0 || s.x > 1.0 || s.y < 0.0 || s.y > 1.0) { shade = 0.0; return uv; }
+            shade = exp(-t * fog * 0.15) * (0.55 + 0.45 * abs(den));
+            return s;
+        }
+
         void main() {
-            vec2 uv = v_uv;
             vec2 aspect = vec2(u_resolution.x / u_resolution.y, 1.0);
             float dark = 1.0;
+            float camShade;
+            vec2 uv = camera(v_uv, aspect, camShade);
+            dark *= camShade;
 
             // ---- explode: shards fly away from the center, plus a shockwave ring
             if (u_shatter > 0.001) {
@@ -679,6 +756,14 @@
             gl.uniform1i(u.u_sceneFlip, srcFlip ? 1 : 0);
             gl.uniform2f(u.u_resolution, this.canvas.width, this.canvas.height);
             gl.uniform1f(u.u_time, performance.now() / 1000);
+            gl.uniform1f(u.u_camMode, f.cam);
+            gl.uniform1f(u.u_camZoom, f.camZoom);
+            gl.uniform1f(u.u_camTilt, f.camTilt);
+            gl.uniform1f(u.u_camFog, f.camFog);
+            gl.uniform1f(u.u_camTravel, f.camTravel);
+            gl.uniform1f(u.u_camAngle, f.camAngle);
+            gl.uniform2f(u.u_camCenter, f.camCenter[0], f.camCenter[1]);
+            gl.uniform1f(u.u_camSlam, f.camSlam);
             gl.uniform2f(u.u_grid, f.gridCols, f.gridRows);
             gl.uniform1i(u.u_gridMirror, f.gridMirror ? 1 : 0);
             gl.uniform1f(u.u_splitMode, f.splitMode);
