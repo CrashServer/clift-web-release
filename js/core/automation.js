@@ -644,7 +644,9 @@
                 return;
             }
             const ws = w.settings;
-            ws.world = w.WORLDS.indexOf(CLIFT.variety.pick('world', w.WORLDS.slice(1)));
+            // The generated Explore world is the main one; drops land in a new one.
+            ws.world = w.WORLDS.indexOf(CLIFT.variety.pick('world', w.WORLDS.slice(1).map(n => [n, n === 'Explore' ? 5 : 1])));
+            if (ws.world === 1 && (drop || Math.random() < 0.3)) w.newWorld();
             ws.move = w.MOVES.indexOf(CLIFT.variety.pick('worldMove', [['Fly', 3], ['Orbit', 2], ['Crane', 2], ['Drift', 2]]));
             ws.style = w.STYLES.indexOf(CLIFT.variety.pick('worldStyle', [['ASCII', 4], ['Blocks', 1], ['Raw', 2]]));
             const [lo, hi] = { break: [0.05, 0.25], groove: [0.2, 0.45], build: [0.4, 0.75], peak: [0.55, 0.95] }[this.section];

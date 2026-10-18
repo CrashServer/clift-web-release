@@ -53,7 +53,13 @@ permission and also works when the page is opened from disk (`file://`).
   beat detection, tempo estimation and auto-level (keeps quiet inputs and highs lively)
 - **Tempo**: BPM clock, tap tempo (re-syncs the downbeat), sync to detected BPM
 - **3D world** (GPU): fly through ray-marched ASCII structures that wear the live decks as
-  their texture - **City** (building heights pump with the spectrum), **Monoliths**,
+  their texture - **Explore**: an endless generated world (hills, mountains and plains with
+  contour lines, under a starry sky with a glowing horizon; biomes of towers, spires, ring
+  gates, ruins, monoliths, floating orbs and rocks that rise out of the ground as you
+  approach). The camera explores it by itself: it picks a landmark it hasn't seen, flies
+  there with banking turns (clearing the ground and whatever stands in the way), circles
+  it, then moves on. **New** generates a different world (seed), **Cut** jumps far away.
+  Plus the classic flights: **City** (building heights pump with the spectrum), **Monoliths**,
   **Temple** (colonnade), **Cubes** (floating, spinning), **Terrain**, **Rings** (tunnel of
   rotating rings), **Lattice** (spheres and bars pulsing with the bass). Rendered as real
   ASCII (one ray per character cell, glyph picked by the 3D shading, color from the
@@ -92,7 +98,8 @@ permission and also works when the page is opened from disk (`file://`).
   in breakdowns up to 60% at peaks), scaled by the **Fill** slider (sparse .. full), and
   keeps screen-filling effects (Invert, blurs, heavy trails) for the full moments.
   It takes the set into the 3D worlds now and then (world, camera move and style
-  chosen per section; drops fly in fast). It frames everything with camera shots per section (slow macro / globe shots in
+  chosen per section, mostly the generated Explore world - drops fly in fast and often
+  land in a brand-new world). It frames everything with camera shots per section (slow macro / globe shots in
   breakdowns, floors and swinging screens in grooves, tunnels and corridors that
   accelerate into the drop) and varies what happens on a drop (slam, glitch storm,
   split burst, strobe, shockwave - the explosion is the rarest). Every choice goes

@@ -85,6 +85,7 @@
         trigger('worldNext', 'Next 3D world', () => CLIFT.world.step('world', CLIFT.world.WORLDS, 1)),
         trigger('worldOff', '3D world off', () => CLIFT.world.set('world', 0)),
         trigger('worldCut', '3D world cut', () => CLIFT.world.cut()),
+        trigger('worldNew', 'New generated 3D world', () => CLIFT.world.newWorld()),
         trigger('worldMove', 'Next 3D camera move', () => CLIFT.world.step('move', CLIFT.world.MOVES, 1)),
         trigger('camNext', 'Next camera', () => CLIFT.fx.stepCamera(1)),
         trigger('camFlat', 'Camera flat', () => CLIFT.fx.set('cam', 0)),

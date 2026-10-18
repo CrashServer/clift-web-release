@@ -778,6 +778,7 @@
             $('world-style').onchange = (ev) => w.set('style', Number(ev.target.value));
             $('world-move').onchange = (ev) => w.set('move', Number(ev.target.value));
             $('world-cut').onclick = () => w.cut();
+            $('world-new').onclick = () => w.newWorld();
             const box = $('world-sliders');
             this.worldInputs = {};
             for (const [key, label] of [['speed', 'Speed'], ['altitude', 'Altitude'], ['detail', 'Detail'],
